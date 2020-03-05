@@ -1,8 +1,14 @@
 % test channel convolution
+%   - snr_db: snr in db scale
+%   - test_pilot: transmit pilot first to get real channel value
+%   - test_signal: transmit test signal (1 ~ 4, 0: normal signal)
+%   - test_gauss_ch: use 2d gaussian channel pattern for test
 % created: 2020.02.11
 % modified:
+%   - 2020.03.02: prefix/postfix option
+%   - 2020.03.03: rician channel added
 
-function [pkt_error_tfeq, pkt_error_ddeq] = test_ch_conv_r1(snr_db, test_pilot, test_signal, test_gauss_ch)
+function [pkt_error_tfeq, pkt_error_ddeq] = test_ch_conv_r1(snr_db, test_pilot, test_signal, test_gauss_ch, test_scope)
 
 % set parameter
 num_fft = 64; % 64;
@@ -10,14 +16,15 @@ num_subc = 32; % 32;
 num_sym = 32; % 32;
 f_s = 15e3*num_subc;
 qam_size = 16;
+cp_position = 'postfix'; % 'postfix'
 len_cp = num_fft/4; % 0;
-synch = 7; % 7;
+synch = 7; % 7; % len_cp in case of prefix
 cfo = 0; % 0.00045; % 0.0002;
 carrier_freq_mhz = 4000;
-velocity_kmh = 120; % 120;
+velocity_kmh = 3; % 120;
 idx_fading = 9; % 9: TDL-A, 12: TDL-D
-delay_spread_rms = 1; %0.1e-6;
-test_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, snr_db, delay_spread_rms);
+delay_spread_rms_us = 0.1; %0.1e-6;
+test_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, snr_db, delay_spread_rms_us);
 
 if test_pilot
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -26,18 +33,33 @@ if test_pilot
 
     % create a rayleigh fading channel object
 %     random_seed = rng;
-    random_seed = 74;
-    fading_ch = comm.RayleighChannel(...
-        'SampleRate', f_s, ...
-        'PathDelays', test_ch.path_delays, ...
-        'AveragePathGains', test_ch.average_path_gains, ...
-        'NormalizePathGains', true, ...
-        'MaximumDopplerShift', test_ch.maximum_doppler_shift, ...
-        'DopplerSpectrum', test_ch.doppler_spectrum);
-    %     'RandomStream', 'mt19937ar with seed', ...
-    %     'Seed', ch_param.seed);
-    %     'PathGainsOutputPort', true);
-    %     'Visualization', 'Impulse response');   % enables the impulse response channel visualization
+    random_seed = rng;
+    switch idx_fading
+        case {12, 13}
+            fading_ch = comm.RicianChannel(...
+                'SampleRate', num.f_s,...
+                'PathDelays', test_ch.path_delays,...
+                'AveragePathGains', test_ch.average_path_gains,...
+                'KFactor', test_ch.k_factor,...
+                'DirectPathDopplerShift', test_ch.maximum_doppler_shift,...
+                'MaximumDopplerShift', test_ch.maximum_doppler_shift,...
+                'DopplerSpectrum', test_ch.doppler_spectrum,...
+                'NormalizePathGains', true);
+        %         'DirectPathInitialPhase', 0.5,...
+        %         'PathGainsOutputPort', true);
+        otherwise
+            fading_ch = comm.RayleighChannel(...
+                'SampleRate', f_s, ...
+                'PathDelays', test_ch.path_delays, ...
+                'AveragePathGains', test_ch.average_path_gains, ...
+                'NormalizePathGains', true, ...
+                'MaximumDopplerShift', test_ch.maximum_doppler_shift, ...
+                'DopplerSpectrum', test_ch.doppler_spectrum);
+            %     'RandomStream', 'mt19937ar with seed', ...
+            %     'Seed', ch_param.seed);
+            %     'PathGainsOutputPort', true);
+            %     'Visualization', 'Impulse response');   % enables the impulse response channel visualization
+    end
 
     % generate pilot tone (single tone)
     tx_sym_dd = zeros(num_subc, num_sym);
@@ -55,8 +77,11 @@ if test_pilot
     tx_ofdm_sym = sqrt(num_subc) * ifft(tx_sym_map_tf, [], 1);
 
     % add cp (cyclic postfix)
-    % tx_ofdm_sym_cp = [tx_ofdm_sym(end-len_cp+1:end, :); tx_ofdm_sym];       % cyclic-prefix
-    tx_ofdm_sym_cp = [tx_ofdm_sym; tx_ofdm_sym(1:len_cp, :)];       % cyclic-postfix
+    if strcmp(cp_position, 'prefix')
+        tx_ofdm_sym_cp = [tx_ofdm_sym(end-len_cp+1:end, :); tx_ofdm_sym];       % cyclic-prefix
+    else
+        tx_ofdm_sym_cp = [tx_ofdm_sym; tx_ofdm_sym(1:len_cp, :)];       % cyclic-postfix
+    end
 
     % serialize
     tx_sig = tx_ofdm_sym_cp(:);
@@ -122,17 +147,32 @@ end
 if test_pilot
     rng(random_seed)
 end
-fading_ch = comm.RayleighChannel(...
-    'SampleRate', f_s, ...
-    'PathDelays', test_ch.path_delays, ...
-    'AveragePathGains', test_ch.average_path_gains, ...
-    'NormalizePathGains', true, ...
-    'MaximumDopplerShift', test_ch.maximum_doppler_shift, ...
-    'DopplerSpectrum', test_ch.doppler_spectrum);
-%     'RandomStream', 'mt19937ar with seed', ...
-%     'Seed', ch_param.seed);
-%     'PathGainsOutputPort', true);
-%     'Visualization', 'Impulse response');   % enables the impulse response channel visualization
+switch idx_fading
+    case {12, 13}
+        fading_ch = comm.RicianChannel(...
+            'SampleRate', num.f_s,...
+            'PathDelays', test_ch.path_delays,...
+            'AveragePathGains', test_ch.average_path_gains,...
+            'KFactor', test_ch.k_factor,...
+            'DirectPathDopplerShift', test_ch.maximum_doppler_shift,...
+            'MaximumDopplerShift', test_ch.maximum_doppler_shift,...
+            'DopplerSpectrum', test_ch.doppler_spectrum,...
+            'NormalizePathGains', true);
+    %         'DirectPathInitialPhase', 0.5,...
+    %         'PathGainsOutputPort', true);
+    otherwise
+        fading_ch = comm.RayleighChannel(...
+            'SampleRate', f_s, ...
+            'PathDelays', test_ch.path_delays, ...
+            'AveragePathGains', test_ch.average_path_gains, ...
+            'NormalizePathGains', true, ...
+            'MaximumDopplerShift', test_ch.maximum_doppler_shift, ...
+            'DopplerSpectrum', test_ch.doppler_spectrum);
+        %     'RandomStream', 'mt19937ar with seed', ...
+        %     'Seed', ch_param.seed);
+        %     'PathGainsOutputPort', true);
+        %     'Visualization', 'Impulse response');   % enables the impulse response channel visualization
+end
 
 % calculate noise variance
 noise_var = 10 ^ ((-0.1)*snr_db);
@@ -179,8 +219,11 @@ tx_sym_map_tf = fftshift(tx_sym_map_shift_tf, 1);
 tx_ofdm_sym = sqrt(num_subc) * ifft(tx_sym_map_tf, [], 1);
 
 % add cp (cyclic postfix)
-% tx_ofdm_sym_cp = [tx_ofdm_sym(end-len_cp+1:end, :); tx_ofdm_sym];       % cyclic-prefix
-tx_ofdm_sym_cp = [tx_ofdm_sym; tx_ofdm_sym(1:len_cp, :)];       % cyclic-postfix
+if strcmp(cp_position, 'prefix')
+    tx_ofdm_sym_cp = [tx_ofdm_sym(end-len_cp+1:end, :); tx_ofdm_sym];       % cyclic-prefix
+else
+    tx_ofdm_sym_cp = [tx_ofdm_sym; tx_ofdm_sym(1:len_cp, :)];       % cyclic-postfix
+end
 
 % serialize
 tx_sig = tx_ofdm_sym_cp(:);
@@ -198,14 +241,14 @@ else
     rx_sig = awgn(tx_sig_faded, snr_db, 'measured');
 end
 
-% compensate cfo
+% compensate cfo (to observe impact of frequency shift)
 cfo_time = 0:length(rx_sig)-1;
 rx_sig_cfo = rx_sig(:) .* exp(-1i*2*pi*cfo*cfo_time(:));
 
 % reshape
 rx_ofdm_sym_cp = reshape(rx_sig_cfo, num_fft+len_cp, num_sym);
 
-% remove cp (with synch)
+% remove cp (with synch: to observe impact of time shift)
 rx_ofdm_sym = rx_ofdm_sym_cp(synch+1:synch+num_fft, :);
 
 % ofdm demodulate the symbol
@@ -231,6 +274,7 @@ else
     % (1) equalize channel in tf domain
     ch_est_tf_mmse_perfect = conj(ch_est_tf_perfect) ./ (noise_var+abs(ch_est_tf_perfect).^2);
     rx_sym_tf_tfeq = rx_sym_tf .* ch_est_tf_mmse_perfect;
+%     rx_sym_tf_tfeq = rx_sym_tf ./ ch_est_tf_perfect;
     
     % (1) observe symbols in dd domain
     rx_sym_dd_tfeq = sqrt(num_subc/num_sym) * fft(ifft(rx_sym_tf_tfeq, [], 1), [], 2);
@@ -238,10 +282,12 @@ else
     pkt_error_tfeq = symerr(tx_bit, rx_bit_tfeq);
     
     % plot
-    figure, scatter(real(tx_sym_dd(:)), imag(tx_sym_dd(:)), 'bo'), hold on, scatter(real(rx_sym_dd_tfeq(:)), imag(rx_sym_dd_tfeq(:)), 'r.'), grid, axis([-2 2 -2 2]), hold off
-    figure, plot(real(tx_sym_dd(:)), '-b.'), hold on, plot(real(rx_sym_dd_tfeq(:)), ':r.'), hold off
-    figure, subplot(1, 2, 1), mesh(1:num_sym, 1:num_subc, abs(tx_sym_dd)), subplot(1, 2, 2), mesh(1:num_sym, 1:num_subc, abs(rx_sym_dd_tfeq))
-    pause
+    if test_scope
+        figure, scatter(real(tx_sym_dd(:)), imag(tx_sym_dd(:)), 'bx'), hold on, scatter(real(rx_sym_dd_tfeq(:)), imag(rx_sym_dd_tfeq(:)), 'r.'), grid, axis([-2 2 -2 2]), hold off, title('constellation tx symbol and rx symbol after tf-eq(mmse)')
+        figure, plot(real(tx_sym_dd(:)), '-b.'), hold on, plot(real(rx_sym_dd_tfeq(:)), ':r.'), hold off, title('real parts of tx and rx symbols after tf-eq(mmse)')
+        figure, subplot(1, 2, 1), mesh(1:num_sym, 1:num_subc, abs(tx_sym_dd)), title('abs of tx symbols in dd-domain'), subplot(1, 2, 2), mesh(1:num_sym, 1:num_subc, abs(rx_sym_dd_tfeq)), title('abs of rx symbols in dd-domain after tf-eq(mmse)')
+        pause
+    end
 end
 
 % (2) estimate dd channel
@@ -254,25 +300,30 @@ else
 end
 
 % (2) evaluate dd channel (compare real channel and estimated channel)
-if test_pilot
+if test_pilot && test_scope
     ch_est_tf_test = rx_sym_tf ./ tx_sym_tf;     % tf domain
     ch_est_dd_test_shift = sqrt(num_subc/num_sym) * fft(ifft(ch_est_tf_test, [], 1), [], 2);    % dd domain
     ch_est_dd_test = fftshift(fftshift(ch_est_dd_test_shift, 1), 2);
     
-    figure, subplot(1, 2, 1), mesh(1:num_sym, 1:num_subc, abs(ch_est_dd_perfect)), subplot(1, 2, 2), mesh(1:num_sym, 1:num_subc, abs(ch_est_dd_test))
+    % plot
+    figure, subplot(1, 2, 1), mesh(1:num_sym, 1:num_subc, abs(ch_est_dd_perfect)), title('abs of real channel in dd-domain'), subplot(1, 2, 2), mesh(1:num_sym, 1:num_subc, abs(ch_est_dd_test)), title('abs of dd-domain channel estimated in tf-domain')
 %     fprintf('Synch.: %3d    Avg. Pwr.: %7.2f\n', synch, sqrt(mean(abs(ch_est_dd_perfect(num_subc/2+1,:)).^2)))
 %     fprintf('CFO.  : %3d    Avg. Pwr.: %7.2f\n', cfo, sqrt(mean(abs(ch_est_dd_perfect(:, num_sym/2+1)).^2)))
     pause
 end
 
 % (2) evaluate dd channel (compare real rx signal and estimated rx signal)
-rx_sym_dd_est_shift = filter2(repmat(ch_est_dd_perfect(end:-1:1, end:-1:1), 2, 2), tx_sym_dd)/sqrt(num_subc*num_sym);
-rx_sym_dd_est = fftshift(fftshift(rx_sym_dd_est_shift, 1), 2);
-figure, plot(abs(rx_sym_dd(:)), '-b.'), hold on, plot(abs(rx_sym_dd_est(:)), ':r.'), hold off
-figure, subplot(1, 2, 1), mesh(1:num_sym, 1:num_subc, abs(rx_sym_dd)), subplot(1, 2, 2), mesh(1:num_sym, 1:num_subc, abs(rx_sym_dd_est))
-pause
+if test_scope
+    rx_sym_dd_est_shift = filter2(repmat(ch_est_dd_perfect(end:-1:1, end:-1:1), 2, 2), tx_sym_dd)/sqrt(num_subc*num_sym);
+    rx_sym_dd_est = fftshift(fftshift(rx_sym_dd_est_shift, 1), 2);
+    
+    % plot
+    figure, plot(abs(rx_sym_dd(:)), '-b.'), hold on, plot(abs(rx_sym_dd_est(:)), ':r.'), hold off, title('abs of real rx signal and estimated rx signal')
+    figure, subplot(1, 2, 1), mesh(1:num_sym, 1:num_subc, abs(rx_sym_dd)), title('abs of real rx signal in dd-domain'), subplot(1, 2, 2), mesh(1:num_sym, 1:num_subc, abs(rx_sym_dd_est)), title('abs of estimated rx signal in dd-domain')
+    pause
+end
 
-% (3) generate block toeplitz dd channel matrix
+% (3) generate block toeplitz(circular) dd channel matrix
 new_tx = tx_sym_dd(:);
 new_rx = rx_sym_dd(:);
 
@@ -297,7 +348,7 @@ if test_gauss_ch
 %     pause
 end
 
-% (3) generate block toeplitz dd channel matrix
+% (3) generate block toeplitz(circular) dd channel matrix
 sub_ch = zeros(len_ch(1)+len_ch_pad_zero(1), len_ch(1)+len_ch_pad_zero(1), len_ch(2)+len_ch_pad_zero(2));
 for j = 1 : len_ch(2)+len_ch_pad_zero(2)
     for k = 1 : len_ch(1)+len_ch_pad_zero(1)
@@ -312,14 +363,18 @@ for k = 1 : len_ch(2)+len_ch_pad_zero(2)
 end
 new_ch = new_ch_full(len_ch_pad_head(2)*len_ch(1)+1 : end-len_ch_pad_tail(2)*len_ch(1), 1:len_ch(2)*len_ch(1)) / sqrt(num_subc*num_sym);
 
-% (3) evaluate block toeplitz dd channel matrix
-new_rx_est = new_ch * new_tx;
-fprintf('Rank: %3d    Cond. Num.: %7.2f\n', rank(new_ch), cond(new_ch))
-figure, subplot(1, 2, 1), mesh(1:num_sym, 1:num_subc, abs(ch_est_dd_perfect)), subplot(1, 2, 2), mesh(1:num_sym*num_subc, 1:num_subc*num_sym, abs(new_ch))
-figure, plot(abs(new_rx(:)), '-b.'), hold on, plot(abs(new_rx_est(:)), ':r.'), hold off
-figure, subplot(1, 2, 1), mesh(1:num_sym, 1:num_subc, abs(reshape(new_rx, num_subc, num_sym))), subplot(1, 2, 2), mesh(1:num_sym, 1:num_subc, abs(reshape(new_rx_est, num_subc, num_sym)))
-figure, plot(abs(new_rx), '-b.'), hold on, plot(abs(new_rx-new_rx_est), ':r.'), hold off
-pause
+% (3) evaluate block toeplitz(circular) dd channel matrix
+if test_scope
+    new_rx_est = new_ch * new_tx;
+
+    % plot
+    fprintf('Block Circular Matrix    Rank: %3d    Cond. Num.: %7.2f\n', rank(new_ch), cond(new_ch))
+    figure, subplot(1, 2, 1), mesh(1:num_sym, 1:num_subc, abs(ch_est_dd_perfect)), title('abs of channel in dd-domain'), subplot(1, 2, 2), mesh(1:num_sym*num_subc, 1:num_subc*num_sym, abs(new_ch)), title('abs of block circular matrix')
+    figure, plot(abs(new_rx(:)), '-b.'), hold on, plot(abs(new_rx_est(:)), ':r.'), hold off, title('abs of real rx signal and rx signal estimated with block circular matrix')
+    figure, subplot(1, 2, 1), mesh(1:num_sym, 1:num_subc, abs(reshape(new_rx, num_subc, num_sym))), title('abs of real rx signal in dd-domain'), subplot(1, 2, 2), mesh(1:num_sym, 1:num_subc, abs(reshape(new_rx_est, num_subc, num_sym))), title('abs of rx signal estimated with block circular matrix')
+    figure, plot(abs(new_rx), '-b.'), hold on, plot(abs(new_rx-new_rx_est), ':r.'), hold off, title('abs of real rx signal and estimation error')
+    pause
+end
 
 if test_signal
     pkt_error_ddeq = 0;
@@ -334,13 +389,20 @@ else
     pkt_error_ddeq = symerr(tx_bit, rx_bit_ddeq);
     
     % plot
-    figure, scatter(real(tx_sym_dd(:)), imag(tx_sym_dd(:)), 'bo'), hold on, scatter(real(rx_sym_dd_ddeq(:)), imag(rx_sym_dd_ddeq(:)), 'r.'), grid, axis([-2 2 -2 2]), hold off
-    figure, plot(real(tx_sym_dd(:)), '-b.'), hold on, plot(real(rx_sym_dd_ddeq(:)), ':r.'), hold off
-    figure, subplot(1, 2, 1), mesh(1:num_sym, 1:num_subc, abs(tx_sym_dd)), subplot(1, 2, 2), mesh(1:num_sym, 1:num_subc, abs(rx_sym_dd_ddeq))
+    if test_scope
+        figure, scatter(real(tx_sym_dd(:)), imag(tx_sym_dd(:)), 'bx'), hold on, scatter(real(rx_sym_dd_ddeq(:)), imag(rx_sym_dd_ddeq(:)), 'r.'), grid, axis([-2 2 -2 2]), hold off, title('constellation tx symbol and rx symbol after dd-eq')
+        figure, plot(real(tx_sym_dd(:)), '-b.'), hold on, plot(real(rx_sym_dd_ddeq(:)), ':r.'), hold off, title('real parts of tx and rx symbols after dd-eq')
+        figure, subplot(1, 2, 1), mesh(1:num_sym, 1:num_subc, abs(tx_sym_dd)), title('abs of tx symbols in dd-domain'), subplot(1, 2, 2), mesh(1:num_sym, 1:num_subc, abs(rx_sym_dd_ddeq)), title('abs of rx symbols in dd-domain after dd-eq')
+    end
+%     figure, plot(real(rx_sym_dd_tfeq(:)), '-b.'), hold on, plot(real(rx_sym_dd_ddeq(:)), ':r.'), hold off, title('real parts of rx symbols after eq'), legend('after tf-eq', 'after dd-eq')
+%     pause
 end
 
-assignin('base', 'ch_est_dd_perfect', ch_est_dd_perfect);
-assignin('base', 'ch_est_dd_perfect', ch_est_dd_perfect);
-assignin('base', 'new_ch', new_ch);
+% dump
+if test_scope
+    assignin('base', 'ch_est_tf_perfect', ch_est_tf_perfect);
+    assignin('base', 'ch_est_dd_perfect', ch_est_dd_perfect);
+    assignin('base', 'new_ch', new_ch);
+end
 
 end

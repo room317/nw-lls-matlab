@@ -81,17 +81,11 @@ while 1
         for sim_idx = 1 : num_sim
             
             % simulate single packet
-            if nw_parse_prm.wave == 1
-%                 pkt_error = ofdm_single_run(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, test_real_ch);
+            if nw_parse_prm.wave == 1   % ofdm
                 pkt_error = ofdm_single_run_r1(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, test_real_ch);
-            else
-%                 pkt_error = otfs_single_run(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, eq_dd, test_dd_pilot);
+            else                        % otfs
                 pkt_error = otfs_single_run_r1(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, eq_dd, test_dd_pilot, test_real_ch);
             end
-            
-%             [num_error, ch_est_mse] = new_wave_test_single_run(packet_param, snr_db, otfs_test_ch_obj, rb_size, sim_param.pilot_mode, pilot_size, spread_seq);
-%             [num_error, ch_est_mse] = otfs_test_single_run(packet_param, snr_db, otfs_test_ch_obj, rb_size, sim_param.pilot_mode, pilot_size);
-%             num_error = ofdm_test_single_run(packet_param, snr_db, otfs_test_ch_obj);
             
             % count packet error
             total_error = total_error + double(pkt_error);
