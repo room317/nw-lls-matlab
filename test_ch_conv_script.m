@@ -9,7 +9,7 @@ test_signal = false;
 test_gauss_ch = false;
 
 % set parameters
-NumSim = 100;
+NumSim = 1000;
 SNRStart = 10;
 SNRCnt = 10;
 SNRStep = 1;
@@ -28,11 +28,11 @@ for snr_idx = 1 : SNRCnt
     
     for sim_idx = 1 : NumSim
         % simulate single packet
-        [pkt_error_tfeq, pkt_error_ddeq] = test_ch_conv_r1(snr_db, test_pilot, test_signal, test_gauss_ch, false);
+        [bit_error_tfeq, bit_error_ddeq] = test_ch_conv_r1(snr_db, test_pilot, test_signal, test_gauss_ch, false);
         
         % count packet error
-        total_error_tfeq = total_error_tfeq + double(pkt_error_tfeq > 0);
-        total_error_ddeq = total_error_ddeq + double(pkt_error_ddeq > 0);
+        total_error_tfeq = total_error_tfeq + double(bit_error_tfeq > 0);
+        total_error_ddeq = total_error_ddeq + double(bit_error_ddeq > 0);
         sim_cnt = sim_cnt + 1;
         if min(total_error_tfeq, total_error_ddeq) > ErrorStop
             break

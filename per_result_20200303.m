@@ -1,3 +1,5 @@
+% Simulator: new_wave_test_r3
+
 % 1) OFDM with perfect tf-domain channel estimation
 % 2) OTFS with perfect tf-domain channel estimation
 % 3) OFDM with tf-domain channel estimation using 2 pilots

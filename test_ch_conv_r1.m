@@ -8,7 +8,7 @@
 %   - 2020.03.02: prefix/postfix option
 %   - 2020.03.03: rician channel added
 
-function [pkt_error_tfeq, pkt_error_ddeq] = test_ch_conv_r1(snr_db, test_pilot, test_signal, test_gauss_ch, test_scope)
+function [qam_error_tfeq, qam_error_ddeq] = test_ch_conv_r1(snr_db, test_pilot, test_signal, test_gauss_ch, test_scope)
 
 % set parameter
 num_fft = 64; % 64;
@@ -16,9 +16,9 @@ num_subc = 32; % 32;
 num_sym = 32; % 32;
 f_s = 15e3*num_subc;
 qam_size = 16;
-cp_position = 'postfix'; % 'postfix'
+cp_position = 'prefix'; % 'postfix'
 len_cp = num_fft/4; % 0;
-synch = 7; % 7; % len_cp in case of prefix
+synch = len_cp; % 7; % len_cp in case of prefix
 cfo = 0; % 0.00045; % 0.0002;
 carrier_freq_mhz = 4000;
 velocity_kmh = 3; % 120;
@@ -269,7 +269,7 @@ else
 end
 
 if ismember(test_signal, [1 2 3 4])
-    pkt_error_tfeq = 0;
+    qam_error_tfeq = 0;
 else
     % (1) equalize channel in tf domain
     ch_est_tf_mmse_perfect = conj(ch_est_tf_perfect) ./ (noise_var+abs(ch_est_tf_perfect).^2);
@@ -279,7 +279,7 @@ else
     % (1) observe symbols in dd domain
     rx_sym_dd_tfeq = sqrt(num_subc/num_sym) * fft(ifft(rx_sym_tf_tfeq, [], 1), [], 2);
     rx_bit_tfeq = qamdemod(rx_sym_dd_tfeq(:), qam_size, 'UnitAveragePower', true);
-    pkt_error_tfeq = symerr(tx_bit, rx_bit_tfeq);
+    qam_error_tfeq = symerr(tx_bit, rx_bit_tfeq);
     
     % plot
     if test_scope
@@ -377,7 +377,7 @@ if test_scope
 end
 
 if test_signal
-    pkt_error_ddeq = 0;
+    qam_error_ddeq = 0;
 else
     % (3) equalize channel in dd domain
     rx_sym_dd_ddeq_vec = new_ch \ rx_sym_dd(:);
@@ -386,7 +386,7 @@ else
     
     % (3) observe symbols in dd domain
     rx_bit_ddeq = qamdemod(rx_sym_dd_ddeq(:), qam_size, 'UnitAveragePower', true);
-    pkt_error_ddeq = symerr(tx_bit, rx_bit_ddeq);
+    qam_error_ddeq = symerr(tx_bit, rx_bit_ddeq);
     
     % plot
     if test_scope
