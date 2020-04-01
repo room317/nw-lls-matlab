@@ -30,7 +30,7 @@ for snr_idx = 1 : SNRCnt
     
     for sim_idx = 1 : NumSim
         % simulate single packet
-        [qam_error_tfeq, qam_error_ddeq, num_qam_per_pkt] = test_dd_pilot(snr_db, test_pilot, test_cp_position, test_synch, false);
+        [qam_error_tfeq, qam_error_ddeq, num_qam_per_pkt] = test_dd_pilot(snr_db, test_pilot, test_cp_position, test_synch, false, -1);
         
         % count packet error
         total_qam_error_tfeq = total_qam_error_tfeq + qam_error_tfeq;

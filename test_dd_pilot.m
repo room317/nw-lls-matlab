@@ -10,14 +10,14 @@
 %   - 2020.03.03: rician channel added
 %   - 2020.03.06: pilot estimation added
 
-function [qam_error_tfeq, qam_error_ddeq, num_qam_per_pkt] = test_dd_pilot(snr_db, test_pilot, test_cp_position, test_synch, test_scope)
+function [qam_error_tfeq, qam_error_ddeq, num_qam_per_pkt] = test_dd_pilot(snr_db, test_pilot, test_cp_position, test_synch, test_scope, test_seed)
 
 % set parameter
 num_fft = 64; % 64;
 num_subc = 32; % 32;
 num_sym = 32; % 32;
-num_pilot_subc = 16; % delay spread axis
-num_guard_subc = 8;  % delay spread axis
+num_pilot_subc = 32; % 16; % delay spread axis
+num_guard_subc = 0; % 8;  % delay spread axis
 f_s = 15e3*num_subc;
 qam_size = 16;
 len_cp = num_fft/4; % 0;
@@ -29,7 +29,15 @@ idx_fading = 9; % 9: TDL-A, 12: TDL-D
 delay_spread_rms_us = 0.1; %0.1e-6;
 test_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, snr_db, delay_spread_rms_us);
 
+% check error
+if test_synch > len_cp
+    error('test_synch should not be greater than %d.\n', len_cp)
+end
+
 % create a rayleigh fading channel object
+if test_seed >= 0
+    rng(test_seed)
+end
 switch idx_fading
     case {12, 13}
         fading_ch = comm.RicianChannel(...
@@ -100,7 +108,7 @@ tx_sym_map_shift_tf(num_fft/2-num_subc/2+1:num_fft/2+num_subc/2, :) = tx_sym_tf;
 tx_sym_map_tf = fftshift(tx_sym_map_shift_tf, 1);
 
 % ofdm modulate
-tx_ofdm_sym = sqrt(num_subc) * ifft(tx_sym_map_tf, [], 1);
+tx_ofdm_sym = sqrt(num_fft) * ifft(tx_sym_map_tf, [], 1);
 
 % add cp (cyclic postfix)
 if strcmp(test_cp_position, 'prefix')
@@ -111,6 +119,12 @@ end
 
 % serialize
 tx_sig = tx_ofdm_sym_cp(:);
+a = tx_sig;
+tx_sig = zeros(size(tx_ofdm_sym_cp));
+tx_sig(49, :) = ones(size(tx_ofdm_sym_cp(1, :)));
+tx_sig = tx_sig(:);
+figure, plot(abs(a), '-b.'), hold on, plot(abs(tx_sig)*4, '-r.'), hold off
+pause
 
 % pass signal through channel
 tx_sig_faded = fading_ch(tx_sig);
@@ -129,7 +143,7 @@ rx_ofdm_sym_cp = reshape(rx_sig_cfo, num_fft+len_cp, num_sym);
 rx_ofdm_sym = rx_ofdm_sym_cp(test_synch+1:test_synch+num_fft, :);
 
 % ofdm demodulate the symbol
-rx_sym_map_tf = (1/sqrt(num_subc)) * fft(rx_ofdm_sym, [], 1);
+rx_sym_map_tf = (1/sqrt(num_fft)) * fft(rx_ofdm_sym, [], 1);
 
 % demap
 rx_sym_map_shift_tf = fftshift(rx_sym_map_tf, 1);
@@ -162,7 +176,11 @@ end
 rx_bit_tfeq = qamdemod(rx_sym_data_dd_tfeq(:), qam_size, 'UnitAveragePower', true);
 
 % (1) calculate bit errors
-qam_error_tfeq = symerr(tx_bit, rx_bit_tfeq);
+if isempty(tx_bit)
+    qam_error_tfeq = 0;
+else
+    qam_error_tfeq = symerr(tx_bit, rx_bit_tfeq);
+end
 
 % plot
 if test_scope
@@ -249,7 +267,11 @@ end
 
 % (3) observe symbols in dd domain
 rx_bit_ddeq = qamdemod(rx_sym_data_dd_ddeq(:), qam_size, 'UnitAveragePower', true);
-qam_error_ddeq = symerr(tx_bit, rx_bit_ddeq);
+if isempty(tx_bit)
+    qam_error_ddeq = 0;
+else
+    qam_error_ddeq = symerr(tx_bit, rx_bit_ddeq);
+end
 
 % plot
 if test_scope
@@ -265,6 +287,21 @@ if test_scope
     assignin('base', 'ch_est_tf_perfect', ch_est_tf_perfect);
     assignin('base', 'ch_est_dd_perfect', ch_est_dd_perfect);
     assignin('base', 'new_ch', new_ch);
+    
+    assignin('base', 'tx_sym_dd', tx_sym_dd);
+    assignin('base', 'tx_sym_tf', tx_sym_tf);
+    assignin('base', 'tx_sym_map_tf', tx_sym_map_tf);
+    assignin('base', 'tx_ofdm_sym', tx_ofdm_sym);
+    assignin('base', 'tx_ofdm_sym_cp', tx_ofdm_sym_cp);
+    assignin('base', 'tx_sig', tx_sig);
+    assignin('base', 'tx_sig_faded', tx_sig_faded);
+    assignin('base', 'rx_sig', rx_sig);
+    assignin('base', 'rx_ofdm_sym_cp', rx_ofdm_sym_cp);
+    assignin('base', 'rx_ofdm_sym', rx_ofdm_sym);
+    assignin('base', 'rx_sym_map_tf', rx_sym_map_tf);
+    assignin('base', 'rx_sym_map_shift_tf', rx_sym_map_shift_tf);
+    assignin('base', 'rx_sym_tf', rx_sym_tf);
+    assignin('base', 'rx_sym_dd', rx_sym_dd);
 end
 
 end
