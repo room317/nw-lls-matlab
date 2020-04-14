@@ -97,9 +97,9 @@ semilogy(ser_otfs_tdla_v3_pilot24(:,1),ser_otfs_tdla_v3_pilot24(:,2),'-ks')
 semilogy(ser_otfs_tdla_v3_pilot28(:,1),ser_otfs_tdla_v3_pilot28(:,2),'-k^')
 semilogy(ser_otfs_tdla_v3_pilot28a(:,1),ser_otfs_tdla_v3_pilot28a(:,2),'-kd'), hold off
 grid minor
-title('OTFS, TDL-A, 16QAM, Uncoded, CH EST with Pilot, D-D EQ')
+title('2D-Spread Mod/Demod, TDL-A, 16QAM, Uncoded')
 xlabel('SNR (dB)'), ylabel('SER')
-legend('pilot size: 25%', 'pilot size: 31%', 'pilot size: 38%', 'pilot size: 44%', 'pilot size: 56%')
+legend('pilot resource: 25%', 'pilot resource: 31%', 'pilot resource: 38%', 'pilot resource: 44%', 'pilot resource: 56%')
 axis([10 24 5e-3 1])
 
 figure
@@ -111,5 +111,5 @@ semilogy(per_otfs_tdla_v3_pilot28a(:,1),per_otfs_tdla_v3_pilot28a(:,2),'-kd'), h
 grid minor
 title('OTFS, TDL-A, 16QAM, Uncoded, CH EST with Pilot, D-D EQ')
 xlabel('SNR (dB)'), ylabel('PER')
-legend('pilot size: 25%', 'pilot size: 31%', 'pilot size: 38%', 'pilot size: 44%', 'pilot size: 56%')
+legend('pilot resource: 25%', 'pilot resource: 31%', 'pilot resource: 38%', 'pilot resource: 44%', 'pilot resource: 56%')
 axis([10 28 1e-2 1])

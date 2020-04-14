@@ -54,7 +54,8 @@ if test_seed >= 0
     
     % dd tone generation
 %     tx_pilot_position = [num_subc/2, num_sym/2];
-    tx_pilot_position = [300, 7];
+%     tx_pilot_position = [300, 7];
+    tx_pilot_position = [0, 0];
     tx_sym_dd = zeros(num_subc, num_sym);
     tx_sym_dd(tx_pilot_position(1)+1, tx_pilot_position(2)+1) = sqrt(num_subc*num_sym);
     
@@ -62,7 +63,7 @@ if test_seed >= 0
     tx_sym_tf = sqrt(num_sym/num_subc) * fft(ifft(tx_sym_dd, [], 2), [], 1);
     
     % map to tf domain
-    tx_sym_map_tf = tx_sym_tf;
+    tx_sym_map_tf = fftshift(tx_sym_tf, 1);
     
     % ofdm modulate
     tx_ofdm_sym = sqrt(num_subc) * ifft(tx_sym_map_tf, [], 1);
@@ -90,7 +91,7 @@ if test_seed >= 0
     rx_sym_map_tf = (1/sqrt(num_subc)) * fft(rx_ofdm_sym, [], 1);
     
     % demap
-    rx_sym_tf = rx_sym_map_tf;
+    rx_sym_tf = fftshift(rx_sym_map_tf, 1);
     
     % 2d inverse sfft
     rx_sym_dd = sqrt(num_subc/num_sym) * fft(ifft(rx_sym_tf, [], 1), [], 2);
@@ -157,6 +158,9 @@ if test_scope
     figure
     subplot(1, 2, 1), mesh(1:num_sym, 1:num_subc, real(fftshift(ch_est_dd_perfect, 2))), title('real(fftshift(dd-channel transform))')
     subplot(1, 2, 2), mesh(1:num_sym, 1:num_subc, imag(fftshift(ch_est_dd_perfect, 2))), title('imag(fftshift(dd-channel transform))')
+    figure
+    subplot(1, 2, 1), mesh(1:num_sym, 1:num_subc, real(rx_sym_dd)), title('real(fftshift(dd-channel transform))')
+    subplot(1, 2, 2), mesh(1:num_sym, 1:num_subc, imag(rx_sym_dd)), title('imag(fftshift(dd-channel transform))')
     pause
 end
 
@@ -201,7 +205,7 @@ tx_sym_dd = reshape(tx_sym, num_subc, []);
 tx_sym_tf = sqrt(num_sym/num_subc) * fft(ifft(tx_sym_dd, [], 2), [], 1);
 
 % map to tf domain
-tx_sym_map_tf = tx_sym_tf;
+tx_sym_map_tf = fftshift(tx_sym_tf, 1);
 
 % ofdm modulate
 tx_ofdm_sym = sqrt(num_subc) * ifft(tx_sym_map_tf, [], 1);
@@ -231,7 +235,7 @@ rx_ofdm_sym = rx_ofdm_sym_cp(test_synch+1:test_synch+num_subc, :);
 rx_sym_map_tf = (1/sqrt(num_subc)) * fft(rx_ofdm_sym, [], 1);
 
 % demap
-rx_sym_tf = rx_sym_map_tf;
+rx_sym_tf = fftshift(rx_sym_map_tf, 1);
 
 % 2d inverse sfft
 rx_sym_dd = sqrt(num_subc/num_sym) * fft(ifft(rx_sym_tf, [], 1), [], 2);

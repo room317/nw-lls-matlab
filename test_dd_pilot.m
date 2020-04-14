@@ -16,17 +16,17 @@ function [qam_error_tfeq, qam_error_ddeq, num_qam_per_pkt] = test_dd_pilot(snr_d
 num_fft = 64; % 64;
 num_subc = 32; % 32;
 num_sym = 32; % 32;
-num_pilot_subc = 32; % 16; % delay spread axis
-num_guard_subc = 0; % 8;  % delay spread axis
+num_pilot_subc = 16; % delay spread axis
+num_guard_subc = 8;  % delay spread axis
 f_s = 15e3*num_subc;
 qam_size = 16;
 len_cp = num_fft/4; % 0;
 % test_synch = len_cp; % 7; % len_cp in case of prefix
 cfo = 0; % 0.00045; % 0.0002;
 carrier_freq_mhz = 4000;
-velocity_kmh = 3; % 120;
+velocity_kmh = 120; % 120;
 idx_fading = 9; % 9: TDL-A, 12: TDL-D
-delay_spread_rms_us = 0.1; %0.1e-6;
+delay_spread_rms_us = 0.01; %0.1e-6;
 test_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, snr_db, delay_spread_rms_us);
 
 % check error
@@ -119,12 +119,6 @@ end
 
 % serialize
 tx_sig = tx_ofdm_sym_cp(:);
-a = tx_sig;
-tx_sig = zeros(size(tx_ofdm_sym_cp));
-tx_sig(49, :) = ones(size(tx_ofdm_sym_cp(1, :)));
-tx_sig = tx_sig(:);
-figure, plot(abs(a), '-b.'), hold on, plot(abs(tx_sig)*4, '-r.'), hold off
-pause
 
 % pass signal through channel
 tx_sig_faded = fading_ch(tx_sig);
@@ -133,8 +127,13 @@ tx_sig_faded = fading_ch(tx_sig);
 rx_sig = awgn(tx_sig_faded, snr_db, 'measured');
 
 % compensate cfo (to observe impact of frequency shift)
+% cfo_time = 0:length(rx_sig)-1;
+% rx_sig_cfo = rx_sig(:) .* exp(-1i*2*pi*cfo*cfo_time(:));
+
 cfo_time = 0:length(rx_sig)-1;
-rx_sig_cfo = rx_sig(:) .* exp(-1i*2*pi*cfo*cfo_time(:));
+cfo_delta = 0*cfo;
+cfo = cfo+cfo_delta*cfo_time;
+rx_sig_cfo = rx_sig(:) .* exp(-1i*2*pi*cfo.'.*cfo_time(:));
 
 % reshape
 rx_ofdm_sym_cp = reshape(rx_sig_cfo, num_fft+len_cp, num_sym);

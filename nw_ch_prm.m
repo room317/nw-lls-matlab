@@ -159,6 +159,7 @@ coherence_bw = 1 / (5 * t_rms_delay);                                       % co
 nw_ch.average_path_gains = power_profile_db;
 nw_ch.path_delays = delay_profile;
 nw_ch.maximum_doppler_shift = doppler_freq;
+nw_ch.t_rms_delay = t_rms_delay;
 nw_ch.t_coherence = t_coherence;
 nw_ch.coherence_bw = coherence_bw;
 nw_ch.ebno_db = ebno_db;
