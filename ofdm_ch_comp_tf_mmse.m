@@ -1,4 +1,4 @@
-function [rx_sym_tf_ndft_eq, noise_var] = ofdm_ch_comp_tf_mmse(rx_sym_tf_ndft, tx_sym_tf_ndft_pilot, num, snr_db)
+function [rx_sym_tf_ndft_eq, ch_est_ndft] = ofdm_ch_comp_tf_mmse(rx_sym_tf_ndft, tx_sym_tf_ndft_pilot, num, noise_var)
 
 % demap data and pilot symbol
 rx_sym_tf_ndft_data = rx_sym_tf_ndft(:, num.idx_data_ofdmsym);
@@ -10,7 +10,6 @@ ch_est_ndft = rx_sym_tf_ndft_pilot .* tx_sym_tf_ndft_pilot;
 ch_est_sat = 100;   % ch_est saturation (zero-division prevention)
 ch_est_ndft_clip = complex(sign(real(ch_est_ndft)).*min(abs(real(ch_est_ndft)),ch_est_sat), ...
     sign(imag(ch_est_ndft)).*min(abs(imag(ch_est_ndft)),ch_est_sat));
-noise_var = 10 ^ ((-0.1)*snr_db);
 ch_est_ndft_mmse = conj(ch_est_ndft_clip) ./ (noise_var+abs(ch_est_ndft_clip).^2);
 
 % interpolate channels

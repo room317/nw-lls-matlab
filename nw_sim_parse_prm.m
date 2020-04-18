@@ -38,6 +38,10 @@ prm_mcs_idx = find(contains(prm_set, 'MCS'), 1);
 prm_tblen_idx = find(contains(prm_set, 'LEN'), 1);
 prm_nsim_idx = find(contains(prm_set, 'SIM'), 1);
 prm_snr_idx = find(contains(prm_set, 'SNR'), 1);
+prm_chreal_idx = find(contains(prm_set, 'REAL'), 1);
+prm_chperfect_idx = find(contains(prm_set, 'PERFECT'), 1);
+prm_chtfpilot_idx = find(contains(prm_set, 'TFPILOT'), 1);
+prm_chddpilot_idx = find(contains(prm_set, 'DDPILOT'), 1);
 
 % prm_bw_idx = find(not(cellfun('isempty', strfind(prm_set, 'BW'))), 1);
 % prm_fc_idx = find(not(cellfun('isempty', strfind(prm_set, 'F'))), 1);
@@ -59,9 +63,9 @@ prm_snr_idx = find(contains(prm_set, 'SNR'), 1);
 if sum(double([isempty(prm_ofdm_idx) isempty(prm_otfs_idx)])) ~= 1
     error('Waveform setting: choose one of these waveforms (OFDM, OTFS).')
 elseif ~isempty(prm_ofdm_idx)
-    prm_wave = 1; % 'OFDM'
+    prm_wave = 'ofdm'; % 'OFDM'
 else
-    prm_wave = 2; % 'OTFS'
+    prm_wave = 'otfs'; % 'OTFS'
 end
 
 % bandwidth
@@ -161,6 +165,19 @@ else
     prm_snr = sscanf(prm_snr_str(4 : end), '%f');
 end
 
+% channel estimation
+if sum(double([isempty(prm_chreal_idx) isempty(prm_chperfect_idx) isempty(prm_chtfpilot_idx) isempty(prm_chddpilot_idx)])) ~= 3
+    error('Channel estimation setting: choose one of these (REAL, PERFECT, TFPILOT, DDPILOT).')
+elseif ~isempty(prm_chreal_idx)
+    prm_chest = 'real';     % channel from the fading block (interference exists)
+elseif ~isempty(prm_chperfect_idx)
+    prm_chest = 'perfect';  % channel from the whole received signals (interferece cancelled)
+elseif ~isempty(prm_chddpilot_idx)
+    prm_chest = 'dd_pilot'; % channel from dd-domain pilots
+else
+    prm_chest = 'tf_pilot'; % channel from tf-domain pilots
+end
+
 % output
 nw_parse_prm.wave = prm_wave;
 nw_parse_prm.bw = prm_bw;
@@ -172,5 +189,6 @@ nw_parse_prm.mcs = prm_mcs;
 nw_parse_prm.tblen = prm_tblen;
 nw_parse_prm.nsim = prm_nsim;
 nw_parse_prm.snr = prm_snr;
+nw_parse_prm.chest = prm_chest;
 
 end

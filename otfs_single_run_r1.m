@@ -17,7 +17,7 @@
 % - real channel compensation in tf domain added: 2020.02.19
 % - real channel compensation in dd domain added: 2020.02.19
 
-function pkt_error = otfs_single_run_r1(sim, cc, rm, num, snr_db, ch, eq_dd, test_dd_pilot, test_real_ch)
+function pkt_error = otfs_single_run_r1(sim, cc, rm, num, snr_db, ch, chest_option)
 
 % create turbo encoder/decoder
 turbo_enc = comm.TurboEncoder('TrellisStructure', cc.tc_trellis, ...
@@ -80,10 +80,10 @@ tx_sym_subfrm = reshape(tx_sym, num.len_rb_sym_user, []);
 rx_sym_dd_ndft = zeros(size(tx_sym_subfrm));
 for subfrm_idx = 1 : size(tx_sym_subfrm, 2)
     
-    if test_real_ch
-        %%%%%%%%%%%%%%%%%%%%
-        %%%%%%%% pilot frame
-        %%%%%%%%%%%%%%%%%%%%
+    if strcmp(chest_option, 'real')
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %%% pilot frame to get real channel %%%
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         % generate single tone in dd domain
         tx_sym_dd_ndft = zeros(num.ndft, num.num_ofdmsym_per_subframe);
@@ -146,13 +146,13 @@ for subfrm_idx = 1 : size(tx_sym_subfrm, 2)
         ch_dd_real = [];
     end
     
-    %%%%%%%%%%%%%%%%%%%%%
-    %%%%%%%% normal frame
-    %%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%
+    %%% normal frame %%%
+    %%%%%%%%%%%%%%%%%%%%
     
     % map data and pilot symbols
-    if eq_dd
-        [tx_sym_dd_ndft, idx_pilot_sym] = otfs_sym_map(tx_sym_subfrm(:, subfrm_idx), num, test_dd_pilot);
+    if strcmp(chest_option, 'dd_pilot')
+        [tx_sym_dd_ndft, idx_pilot_sym] = otfs_sym_map(tx_sym_subfrm(:, subfrm_idx), num);
     else
         % generate pilot symbols
         tx_sym_dd_ndft_pilot = randi([0 1], num.ndft, num.num_pilot_ofdmsym_per_subframe)*2-1;
@@ -187,14 +187,13 @@ for subfrm_idx = 1 : size(tx_sym_subfrm, 2)
     tx_ofdm_sym_serial = tx_ofdm_sym_cp(:);
     
     % pass signal through channel
-    if test_real_ch
+    if strcmp(chest_option, 'real')
         rng(random_seed)
     end
     tx_ofdm_sym_faded = fading_ch(tx_ofdm_sym_serial);
     
     % add gaussian noise
     rx_ofdm_sym_serial = awgn(tx_ofdm_sym_faded, snr_db, 'measured');
-%     rx_ofdm_sym_serial = awgn(tx_ofdm_sym_serial, snr_db, 'measured');
 %     rx_ofdm_sym_serial = tx_ofdm_sym_faded;
     
     % reshape
@@ -214,13 +213,12 @@ for subfrm_idx = 1 : size(tx_sym_subfrm, 2)
     rx_sym_tf_ndft = rx_sym_tf_subc;
     
     % estimate and compensate channel
-    if eq_dd
+    if strcmp(chest_option, 'dd_pilot')
         % 2d inverse sfft
         rx_sym_dd_ndft_subfrm = sqrt(num.ndft/num.num_ofdmsym_per_subframe)*fft(ifft(rx_sym_tf_ndft, [], 1), [], 2);
         
         % estimate and compensate channel in dd domain
-        [rx_sym_dd_ndft_eq_subfrm, ~, ~] = otfs_ch_comp_dd_mmse(rx_sym_dd_ndft_subfrm, rx_sym_tf_ndft, idx_pilot_sym, num, noise_var, test_dd_pilot, test_real_ch, ch_dd_real);
-%         [rx_sym_dd_ndft_eq_subfrm, aaaaaa, ~] = otfs_ch_comp_dd_mmse(rx_sym_dd_ndft_subfrm, rx_sym_tf_ndft, idx_pilot_sym, num, noise_var, test_dd_pilot, false, ch_dd_real);
+        [rx_sym_dd_ndft_eq_subfrm, ~, ~] = otfs_ch_comp_dd_mmse(rx_sym_dd_ndft_subfrm, rx_sym_tf_ndft, idx_pilot_sym, num, noise_var, chest_option, ch_dd_real);
         
 %         % for test (comment this block before simulation!)
 %         [~, ch_est_dd_ndft_shift_subfrm, ch_est_tf_ndft_subfrm] = otfs_ch_comp_dd_mmse(rx_sym_dd_ndft_subfrm, rx_sym_tf_ndft, idx_pilot_sym, num, noise_var, test_dd_pilot);
@@ -232,8 +230,7 @@ for subfrm_idx = 1 : size(tx_sym_subfrm, 2)
         rx_sym_dd_ndft_data_subfrm = otfs_sym_demap(rx_sym_dd_ndft_eq_subfrm, idx_pilot_sym, num);
     else
         % estimate and compensate channel in tf domain
-        [rx_sym_tf_ndft_eq, ~] = otfs_ch_comp_tf_mmse_perfect(rx_sym_tf_ndft, tx_ofdm_sym_serial, tx_ofdm_sym_faded, test_real_ch, ch_tf_real, num, noise_var);
-%         [rx_sym_tf_ndft_eq, aaaaaa] = otfs_ch_comp_tf_mmse_perfect(rx_sym_tf_ndft, tx_ofdm_sym_serial, tx_ofdm_sym_faded, false, ch_tf_real, num, noise_var);
+        [rx_sym_tf_ndft_eq, ~] = otfs_ch_comp_tf_mmse_perfect(rx_sym_tf_ndft, tx_ofdm_sym_serial, tx_ofdm_sym_faded, chest_option, ch_tf_real, num, noise_var);
 %         [rx_sym_tf_ndft_eq, ~] = otfs_ch_comp_tf_mmse(rx_sym_tf_ndft, tx_ofdm_sym_serial, tx_ofdm_sym_faded, num, noise_var);
 %         figure, subplot(1, 2, 1), mesh(1:num.num_ofdmsym_per_subframe, 1:num.ndft, abs(ch_tf_real)), subplot(1, 2, 2), mesh(1:num.num_ofdmsym_per_subframe, 1:num.ndft, abs(aaaaaa))
 %         pause

@@ -54,15 +54,15 @@ while 1
     len_tb_bit = nw_parse_prm.tblen;
     mcs = nw_parse_prm.mcs;
     num_sim = nw_parse_prm.nsim;
+    chest_option = nw_parse_prm.chest;
+    waveform = nw_parse_prm.wave;
     
-    % equalization option
-    if nw_parse_prm.wave == 1
-        eq_dd = false;   % delay-doppler domain equalization
-    else
-        eq_dd = true;   % delay-doppler domain equalization
+    % set equalization option
+    if strcmp(waveform, 'ofdm') && strcmp(chest_option, 'dd_pilot')
+        error('OFDM cannot use dd-domain pilots.')
     end
     
-    nw_num = nw_num_prm(idx_bandwidth, eq_dd);
+    nw_num = nw_num_prm(idx_bandwidth, chest_option);
     nw_cc = nw_cc_prm(len_tb_bit);
     nw_rm = nw_rm_prm(len_tb_bit, mcs, nw_num, nw_cc);
     nw_sim = nw_sim_prm(len_tb_bit, num_sim, nw_num, nw_cc, nw_rm);
@@ -81,10 +81,10 @@ while 1
         for sim_idx = 1 : num_sim
             
             % simulate single packet
-            if nw_parse_prm.wave == 1   % ofdm
-                pkt_error = ofdm_single_run_r1(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, test_real_ch);
-            else                        % otfs
-                pkt_error = otfs_single_run_r1(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, eq_dd, test_dd_pilot, test_real_ch);
+            if strcmp(waveform, 'ofdm')    % ofdm
+                pkt_error = ofdm_single_run_r1(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option);
+            else                           % otfs
+                pkt_error = otfs_single_run_r1(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option);
             end
             
             % count packet error

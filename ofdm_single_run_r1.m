@@ -11,7 +11,7 @@
 % - subframe buffer fixed: 2019.12.10
 % - real channel estimation with single tone pilot added: 2020.02.09
 
-function pkt_error = ofdm_single_run_r1(sim, cc, rm, num, snr_db, ch, test_real_ch)
+function pkt_error = ofdm_single_run_r1(sim, cc, rm, num, snr_db, ch, chest_option)
 
 % create turbo encoder/decoder
 turbo_enc = comm.TurboEncoder('TrellisStructure', cc.tc_trellis, ...
@@ -73,10 +73,10 @@ tx_sym_subfrm = reshape(tx_sym, num.len_rb_sym_user, []);
 rx_sym_eq = zeros(num.ndft*num.num_data_ofdmsym_per_subframe, size(tx_sym_subfrm, 2));
 for subfrm_idx = 1 : size(tx_sym_subfrm, 2)
     
-    if test_real_ch
-        %%%%%%%%%%%%%%%%%%%%
-        %%%%%%%% pilot frame
-        %%%%%%%%%%%%%%%%%%%%
+    if strcmp(chest_option, 'real')
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %%% pilot frame to get real channel %%%
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         % generate impulse train
         tx_sym_subfrm_reshape = ones(num.ndft, num.num_ofdmsym_per_subframe);
@@ -121,9 +121,9 @@ for subfrm_idx = 1 : size(tx_sym_subfrm, 2)
         ch_real = [];
     end
     
-    %%%%%%%%%%%%%%%%%%%%%
-    %%%%%%%% normal frame
-    %%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%
+    %%% normal frame %%%
+    %%%%%%%%%%%%%%%%%%%%
     
     % generate pilot symbols
     tx_sym_subfrm_pilot = randi([0 1], num.ndft, num.num_pilot_ofdmsym_per_subframe)*2-1;
@@ -145,7 +145,7 @@ for subfrm_idx = 1 : size(tx_sym_subfrm, 2)
     tx_ofdm_sym_serial = tx_ofdm_sym_cp(:);
     
     % pass signal through channel
-    if test_real_ch
+    if strcmp(chest_option, 'real')
         rng(random_seed)
     end
     tx_ofdm_sym_faded = fading_ch(tx_ofdm_sym_serial);
@@ -168,8 +168,11 @@ for subfrm_idx = 1 : size(tx_sym_subfrm, 2)
     rx_sym_demap = rx_sym_map_shift(num.nfft/2-num.ndft/2+1:num.nfft/2+num.ndft/2, :);
     
     % estimate and compensate channel
-    [rx_sym_eq_subfrm, ~] = ofdm_ch_comp_tf_mmse_perfect(rx_sym_demap, tx_ofdm_sym_serial, tx_ofdm_sym_faded, num, noise_var, test_real_ch, ch_real);
-%     [rx_sym_eq_subfrm, noise_var] = ofdm_ch_comp_tf_mmse(rx_sym_demap, tx_sym_subfrm_pilot, num, snr_db);
+    if strcmp(chest_option, 'tf_pilot')
+        [rx_sym_eq_subfrm, ~] = ofdm_ch_comp_tf_mmse(rx_sym_demap, tx_sym_subfrm_pilot, num, noise_var);
+    else
+        [rx_sym_eq_subfrm, ~] = ofdm_ch_comp_tf_mmse_perfect(rx_sym_demap, tx_ofdm_sym_serial, tx_ofdm_sym_faded, num, noise_var, chest_option, ch_real);
+    end
     
     % buffer qam symbols
     rx_sym_eq(:, subfrm_idx) = rx_sym_eq_subfrm(:);

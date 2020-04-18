@@ -4,10 +4,10 @@ function rx_sym_dd_ndft_data = otfs_sym_demap(rx_sym_dd_ndft, idx_pilot_sym, num
 
 % demap data symbols
 data_sym_left = rx_sym_dd_ndft(:, 1:idx_pilot_sym(2));
-data_sym_up = rx_sym_dd_ndft(1:idx_pilot_sym(1), idx_pilot_sym(2)+1:idx_pilot_sym(2)+num.len_pilot_otfssym);
-data_sym_down = rx_sym_dd_ndft(idx_pilot_sym(1)+num.len_pilot_subc+1:end, idx_pilot_sym(2)+1:idx_pilot_sym(2)+num.len_pilot_otfssym);
+data_sym_up = rx_sym_dd_ndft(1:idx_pilot_sym(1), idx_pilot_sym(2)+1:idx_pilot_sym(2)+num.num_pilot_doppler);
+data_sym_down = rx_sym_dd_ndft(idx_pilot_sym(1)+num.num_pilot_delay+1:end, idx_pilot_sym(2)+1:idx_pilot_sym(2)+num.num_pilot_doppler);
 data_sym_mid = [data_sym_up; data_sym_down];
-data_sym_right = rx_sym_dd_ndft(:, idx_pilot_sym(2)+num.len_pilot_otfssym+1:end);
+data_sym_right = rx_sym_dd_ndft(:, idx_pilot_sym(2)+num.num_pilot_doppler+1:end);
 
 % serialize data symbols
 rx_sym_dd_ndft_data = [data_sym_left(:); data_sym_mid(:); data_sym_right(:)];

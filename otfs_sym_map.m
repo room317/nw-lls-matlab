@@ -1,27 +1,21 @@
 % map otfs data and pilot qam symbols
 
-function [tx_sym_dd_ndft, idx_pilot_sym] = otfs_sym_map(data_sym, num, test_dd_pilot)
+function [tx_sym_dd_ndft, idx_pilot_sym] = otfs_sym_map(data_sym, num)
 
 % generate pilot symbols
-pilot_sym = zeros(num.len_pilot_subc, num.len_pilot_otfssym);
-pilot_sym((num.len_pilot_subc/2)+1, (num.len_pilot_otfssym/2)+1) = sqrt(num.len_pilot_subc*num.len_pilot_otfssym);
-% pilot_sym((num.len_pilot_subc/2)-4, (num.len_pilot_otfssym/2)+1) = sqrt(num.len_pilot_subc*num.len_pilot_otfssym);
+pilot_sym = zeros(num.num_pilot_delay, num.num_pilot_doppler);
+pilot_sym((num.num_pilot_delay/2)+1, (num.num_pilot_doppler/2)+1) = sqrt(num.num_pilot_delay*num.num_pilot_doppler);
+% pilot_sym((num.num_pilot_delay/2)-4, (num.num_pilot_doppler/2)+1) = sqrt(num.num_pilot_delay*num.num_pilot_doppler);
 
 % calculate pilot symbol index
-% idx_pilot_sym = [ceil((num.ndft-num.len_pilot_subc)/2) (num.num_ofdmsym_per_subframe-num.len_pilot_otfssym)/2];
-idx_pilot_sym = [floor((num.ndft-num.len_pilot_subc)/2) (num.num_ofdmsym_per_subframe-num.len_pilot_otfssym)/2];
-
-% test mode (allocate whole resource block to pilot)
-if test_dd_pilot
-    pilot_sym((num.len_pilot_subc/2)+1, (num.len_pilot_otfssym/2)+1) = sqrt(num.ndft*num.num_ofdmsym_per_subframe);    % remove this!!! for test only!!!
-    data_sym = zeros(size(data_sym));
-end
+% idx_pilot_sym = [ceil((num.ndft-num.num_pilot_delay)/2) (num.num_ofdmsym_per_subframe-num.num_pilot_doppler)/2];
+idx_pilot_sym = [floor((num.ndft-num.num_pilot_delay)/2) (num.num_ofdmsym_per_subframe-num.num_pilot_doppler)/2];
 
 % reshape data symbols
 data_sym_left = reshape(data_sym(1:num.ndft*idx_pilot_sym(2)), num.ndft, idx_pilot_sym(2));
 data_sym(1:num.ndft*idx_pilot_sym(2)) = [];
-data_sym_mid = reshape(data_sym(1:(num.ndft-num.len_pilot_subc)*num.len_pilot_otfssym), (num.ndft-num.len_pilot_subc), num.len_pilot_otfssym);
-data_sym(1:(num.ndft-num.len_pilot_subc)*num.len_pilot_otfssym) = [];
+data_sym_mid = reshape(data_sym(1:(num.ndft-num.num_pilot_delay)*num.num_pilot_doppler), (num.ndft-num.num_pilot_delay), num.num_pilot_doppler);
+data_sym(1:(num.ndft-num.num_pilot_delay)*num.num_pilot_doppler) = [];
 data_sym_right = reshape(data_sym, num.ndft, idx_pilot_sym(2));
 
 % map resource block

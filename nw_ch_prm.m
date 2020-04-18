@@ -8,6 +8,15 @@ function nw_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, ebno_db, 
 % carrier_freq_mhz = 4000;
 % velocity_kmh = 30;
 
+% scaling of delays
+% model                   | delay spread
+% ------------------------+-------------
+% very short delay spread |      10 ns
+% short delay spread      |      30 ns
+% nominal delay spread    |     100 ns
+% long delay spread       |     300 ns
+% very long delay spread  |    1000 ns
+
 % D1-Rural Macro (RMa) LOS (Winner II)
 % power_profile_rma_los_db = [-15];
 % delay_profile_rma_los_us = [0.005];

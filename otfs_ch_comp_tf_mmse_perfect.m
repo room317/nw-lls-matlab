@@ -10,10 +10,10 @@
 % - compensation with real channel input added: 2020.02.19
 
 
-function [rx_sym_tf_ndft_eq, ch_est_ndft] = otfs_ch_comp_tf_mmse_perfect(rx_sym_tf_ndft, ch_in_time_serial, ch_out_time_serial, test_real_ch, ch_tf_real, num, noise_var)
+function [rx_sym_tf_ndft_eq, ch_est_ndft] = otfs_ch_comp_tf_mmse_perfect(rx_sym_tf_ndft, ch_in_time_serial, ch_out_time_serial, chest_option, ch_tf_real, num, noise_var)
 
 % estimate channel
-if test_real_ch
+if strcmp(chest_option, 'real')
     % estimate channel
     ch_est_ndft = ch_tf_real;  % estimate channel
 else

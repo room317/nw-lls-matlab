@@ -1,9 +1,9 @@
-function [rx_sym_tf_ndft_eq, ch_est_ndft] = ofdm_ch_comp_tf_mmse_perfect(rx_sym_tf_ndft, ch_in_time_serial, ch_out_time_serial, num, noise_var, test_real_ch, ch_real)
+function [rx_sym_tf_ndft_eq, ch_est_ndft] = ofdm_ch_comp_tf_mmse_perfect(rx_sym_tf_ndft, ch_in_time_serial, ch_out_time_serial, num, noise_var, chest_option, ch_real)
 
 % demap data symbol
 rx_sym_tf_ndft_data = rx_sym_tf_ndft(:, num.idx_data_ofdmsym);
 
-if test_real_ch
+if strcmp(chest_option, 'real')
     ch_est_ndft = ch_real;
 else
     % demap channel input
