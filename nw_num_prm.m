@@ -41,15 +41,17 @@ ndft = num_prb_user * 12;       % number of dft
 % set number of data symbols per user
 if strcmp(chest_option, 'dd_pilot')     % tf-domain pilots (some symbols for pilots)
     % otfs pilot setup
-    % num. otfs pilot qam symbols = num. ofdm pilot qam symbols
+    % num. otfs pilot(+guard) qam symbols = num. ofdm pilot qam symbols
     % ex) 600*2 and 86*14
     num_pilot_doppler = 14;     % length of pilot rb to otfs symbols (set even number)
-    num_pilot_delay = 86;       % length of pilot rb to subcarriers (set even number)
-    len_rb_sym_user = (ndft * num_ofdmsym_per_subframe) - (num_pilot_doppler * num_pilot_delay);          % number of data symbols per user
+    num_pilot_delay = 43;       % length of pilot rb to subcarriers (set even number)
+    num_guard_delay = num_pilot_delay;  % length of guard rb to subcarriers (set even number)
+    len_rb_sym_user = (ndft*num_ofdmsym_per_subframe)-(num_pilot_doppler*(num_pilot_delay+num_pilot_delay));    % number of data symbols per user
 else
     num_pilot_doppler = [];
     num_pilot_delay = [];
-    len_rb_sym_user = ndft * num_data_ofdmsym_per_subframe;          % number of data symbols per user
+    num_guard_delay = [];
+    len_rb_sym_user = ndft*num_data_ofdmsym_per_subframe;   % number of data symbols per user
 end
 
 % set timing parameters
@@ -105,5 +107,6 @@ nw_num.t_subframe = t_subframe;
 % nw_num.len_pilot_subc = num_pilot_delay;
 nw_num.num_pilot_doppler = num_pilot_doppler;
 nw_num.num_pilot_delay = num_pilot_delay;
+nw_num.num_guard_delay = num_guard_delay;
 
 end

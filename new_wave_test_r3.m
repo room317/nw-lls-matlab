@@ -55,13 +55,10 @@ while 1
     mcs = nw_parse_prm.mcs;
     num_sim = nw_parse_prm.nsim;
     chest_option = nw_parse_prm.chest;
+    cheq_option = nw_parse_prm.cheq;
     waveform = nw_parse_prm.wave;
     
     % set equalization option
-    if strcmp(waveform, 'ofdm') && strcmp(chest_option, 'dd_pilot')
-        error('OFDM cannot use dd-domain pilots.')
-    end
-    
     nw_num = nw_num_prm(idx_bandwidth, chest_option);
     nw_cc = nw_cc_prm(len_tb_bit);
     nw_rm = nw_rm_prm(len_tb_bit, mcs, nw_num, nw_cc);
@@ -84,7 +81,7 @@ while 1
             if strcmp(waveform, 'ofdm')    % ofdm
                 pkt_error = ofdm_single_run_r1(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option);
             else                           % otfs
-                pkt_error = otfs_single_run_r1(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option);
+                pkt_error = otfs_single_run_r2(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option, cheq_option);
             end
             
             % count packet error

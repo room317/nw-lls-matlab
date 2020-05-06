@@ -1,9 +1,10 @@
 % test dd pilot
 %   - snr_db: snr in db scale
-%   - test_pilot: transmit pilot first to get real channel value
-%   - test_cp_position = 'prefix' or 'postfix'
 %   - test_synch: synch position
 %   - test_scope: print and plot results
+%   - test_seed: random seed for channel
+%   - test_chest: channel estimation option {'tf'. 'dd'}
+%   - test_cheq: channel eq. option {'tf', 'tf_mmse', 'dd'}
 % created: 2020.03.06
 % modified:
 %   - 2020.03.02: prefix/postfix option
@@ -11,7 +12,10 @@
 %   - 2020.03.06: pilot estimation added
 %   - 2020.04.29: removed unused options
 
-function [qam_error, num_qam_per_pkt] = test_dd_pilot_r1(snr_db, test_synch, test_scope, test_seed, test_chest, test_cheq)
+function [qam_error, num_qam_per_pkt, ch_est_rmse] = test_dd_pilot_r2(test_metric, test_synch, test_scope, test_seed, test_chest, test_cheq)
+
+% test
+snr_db = test_metric;
 
 % set parameter
 num_ofdm_subc = 1024; % 64;
@@ -21,19 +25,24 @@ num_sym = 14; % 32;
 num_pilot_subc = 84; % delay spread axis
 num_pilot_sym = 14;
 
-f_s = 15e3*num_ofdm_subc;
+f_subc = 15e3;
+f_s = f_subc*num_ofdm_subc;
 qam_size = 16;
-len_cp = floor(num_pilot_subc/2);
+len_cp = 72; % floor(num_pilot_subc/2);
 cfo_norm = 0; % normalized cfo. cfo = cfo_norm/t_sym;
 carrier_freq_mhz = 4000;
-velocity_kmh = 500; % 120;
+velocity_kmh = 120;
 idx_fading = 9; % 9: TDL-A, 12: TDL-D
-delay_spread_rms_us = 0.1; %0.1e-6;
+delay_spread_rms_us = 0.01; %0.1e-6;
 test_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, snr_db, delay_spread_rms_us);
 
 % guard area
-num_pilot_guard_subc = 20;
+num_pilot_guard_subc = 14; % 20;
 num_pilot_guard_sym = 0;
+
+% null area
+num_data_null_subc_head = 5; % 1;
+num_data_null_subc_tail = 5; % 5;
 
 % create a rayleigh fading channel object
 if test_seed >= 0
@@ -66,7 +75,10 @@ noise_var = 10 ^ ((-0.1)*snr_db);
 
 if strcmp(test_chest, 'dd')
     % calculate num. qam symbols per packet
-    num_qam_per_pkt = (num_subc*num_sym)-(num_pilot_subc*num_pilot_sym);
+    num_qam_per_pkt = ...
+        (num_subc*num_sym)- ...
+        (num_pilot_subc*num_pilot_sym)- ...
+        ((num_data_null_subc_head+num_data_null_subc_tail)*num_pilot_sym);
     
     % generate bit stream
     tx_bit = randi([0 qam_size-1], num_qam_per_pkt, 1);
@@ -74,21 +86,41 @@ if strcmp(test_chest, 'dd')
     % modulate bit stream
     tx_sym_data = qammod(tx_bit, qam_size, 'UnitAveragePower', true);
     
+%     % help map
+%     nr=16;
+%     np=5; p=zeros(np, 1); p(ceil(np/2)+1)=1;
+%     nd1=floor((nr-np)/2); d1=ones(nd1,1);
+%     nd2=ceil((nr-np)/2); d2=ones(nd2,1);
+%     r=[d1; p; d2];
+%     rr=zeros(nr,1); rr(floor(nr/2)+1)=1; % for comparison
+    
     % reshape data symbol stream
-    tx_sym_data1 = tx_sym_data(1:num_pilot_subc*(num_sym-num_pilot_sym));
-    tx_sym_data2 = tx_sym_data(num_pilot_subc*(num_sym-num_pilot_sym)+1:end);
-    tx_sym_data1_dd = reshape(tx_sym_data1, num_pilot_subc, []);
-    tx_sym_data2_dd = reshape(tx_sym_data2, num_subc-num_pilot_subc, []);
+    num_tx_sym_data1 = [floor((num_subc-num_pilot_subc)/2)-num_data_null_subc_head num_sym];
+    num_tx_sym_data2 = [num_pilot_subc num_sym-num_pilot_sym];
+    num_tx_sym_data3 = [ceil((num_subc-num_pilot_subc)/2)-num_data_null_subc_tail num_sym];
+    tx_sym_data1 = tx_sym_data(1:prod(num_tx_sym_data1));
+    tx_sym_data2 = tx_sym_data(prod(num_tx_sym_data1)+1:prod(num_tx_sym_data1)+prod(num_tx_sym_data2));
+    tx_sym_data3 = tx_sym_data(prod(num_tx_sym_data1)+prod(num_tx_sym_data2)+1:end);
+    tx_sym_data1_dd = reshape(tx_sym_data1, num_tx_sym_data1(1), []);
+    tx_sym_data2_dd = reshape(tx_sym_data2, num_tx_sym_data2(1), []);
+    tx_sym_data3_dd = reshape(tx_sym_data3, num_tx_sym_data3(1), []);
     
     % generate pilot symbols with guard
     tx_sym_pilot_dd = zeros(num_pilot_subc, num_pilot_sym);
     tx_sym_pilot_dd(floor(num_pilot_subc/2)+1, floor(num_pilot_sym/2)+1) = sqrt(num_pilot_subc*num_pilot_sym);
     
+    % generate null symbols
+    tx_sym_null_head_dd = zeros(num_data_null_subc_head, num_sym);
+    tx_sym_null_tail_dd = zeros(num_data_null_subc_tail, num_sym);
+    
     % map data and pilot
     tx_sym_dd_circshift = [...
-        [tx_sym_pilot_dd, tx_sym_data1_dd]; ...
-        tx_sym_data2_dd];
-    tx_sym_dd = circshift(tx_sym_dd_circshift, [-floor(num_pilot_subc/2), -floor(num_pilot_sym/2)]);
+        tx_sym_null_head_dd;
+        tx_sym_data1_dd;
+        tx_sym_pilot_dd, tx_sym_data2_dd;
+        tx_sym_data3_dd;
+        tx_sym_null_tail_dd];
+    tx_sym_dd = circshift(tx_sym_dd_circshift, floor((num_sym-num_pilot_sym)/2), 2);
 else
     % calculate num. qam symbols per packet
     num_qam_per_pkt = num_subc*num_sym;
@@ -168,22 +200,40 @@ if strcmp(test_chest, 'tf')
     ch_est_dd = sqrt(num_subc/num_sym) * fft(ifft(ch_est_tf, [], 1), [], 2);
 elseif strcmp(test_chest, 'dd')
     % demap pilot
-    rx_sym_dd_circshift = circshift(rx_sym_dd, [floor(num_pilot_subc/2), floor(num_pilot_sym/2)]);
-    rx_sym_pilot_dd = rx_sym_dd_circshift(1:num_pilot_subc, 1:num_pilot_sym);
+    rx_sym_dd_circshift = circshift(rx_sym_dd, -floor((num_sym-num_pilot_sym)/2), 2);
+    rx_sym_pilot_dd = rx_sym_dd_circshift(num_data_null_subc_head+num_tx_sym_data1(1)+1:num_data_null_subc_head+num_tx_sym_data1(1)+num_pilot_subc, 1:num_pilot_sym);
     
     % estimate dd channel
-    idx_pilot_begin = [floor(num_pilot_guard_subc/2)+1, floor(num_pilot_guard_sym/2)+1];
-    idx_pilot_end = [floor(num_pilot_guard_subc/2)+(num_pilot_subc-num_pilot_guard_subc), floor(num_pilot_guard_sym/2)++(num_pilot_sym-num_pilot_guard_sym)];
     scale_pilot = sqrt((num_subc*num_sym)/(num_pilot_subc*num_pilot_sym));
     ch_est_dd_circshift = zeros(num_subc, num_sym);
-    ch_est_dd_circshift(idx_pilot_begin(1):idx_pilot_end(1), idx_pilot_begin(2):idx_pilot_end(2)) = ...
-        scale_pilot*rx_sym_pilot_dd(idx_pilot_begin(1):idx_pilot_end(1), idx_pilot_begin(2):idx_pilot_end(2));
+    ch_est_dd_circshift(floor(num_pilot_guard_subc/2)+1:num_pilot_subc-floor(num_pilot_guard_subc/2), floor(num_pilot_guard_sym/2)+1:num_pilot_sym-floor(num_pilot_guard_sym/2)) = ...
+        scale_pilot*rx_sym_pilot_dd(floor(num_pilot_guard_subc/2)+1:num_pilot_subc-floor(num_pilot_guard_subc/2), floor(num_pilot_guard_sym/2)+1:num_pilot_sym-floor(num_pilot_guard_sym/2));
     ch_est_dd = circshift(ch_est_dd_circshift, [-floor(num_pilot_subc/2), -floor(num_pilot_sym/2)]);
     
     % estimate tf channel
     ch_est_tf = sqrt(num_sym/num_subc) * fft(ifft(ch_est_dd, [], 2), [], 1);
 else
     error('test_chest value must be one of these: {tf, dd}')
+end
+
+% calculate channel rmse
+if strcmp(test_chest, 'dd')
+    % calculate perfect tf channel
+    ch_est_tf_perfect = rx_sym_tf ./ tx_sym_tf;     % tf domain
+    
+    % calculate perfect dd channel
+    ch_est_dd_perfect = sqrt(num_subc/num_sym) * fft(ifft(ch_est_tf_perfect, [], 1), [], 2);
+    
+    % calculate channel rmse
+    ch_est_rmse = sqrt(mean(abs(ch_est_dd_perfect(:)-ch_est_dd(:)).^2));
+    
+    if test_scope
+        figure, subplot(1, 2, 1), mesh(1:num_sym, 1:num_subc, abs(ch_est_tf_perfect)), test_axis = axis; subplot(1, 2, 2), mesh(1:num_sym, 1:num_subc, abs(ch_est_tf)), axis(test_axis)
+        figure, subplot(1, 2, 1), mesh(1:num_sym, 1:num_subc, abs(ch_est_dd_perfect)), test_axis = axis; subplot(1, 2, 2), mesh(1:num_sym, 1:num_subc, abs(ch_est_dd)), axis(test_axis)
+        pause
+    end
+else
+    ch_est_rmse = [];
 end
 
 % equalize channel
@@ -231,10 +281,11 @@ end
 
 % demap data symbols
 if strcmp(test_chest, 'dd')
-    rx_sym_dd_circshift = circshift(rx_sym_dd_eq, [floor(num_pilot_subc/2), floor(num_pilot_sym/2)]);
-    rx_sym_data1_dd = rx_sym_dd_circshift(1:num_pilot_subc, num_pilot_sym+1:end);
-    rx_sym_data2_dd = rx_sym_dd_circshift(num_pilot_subc+1:end, :);
-    rx_sym_data = [rx_sym_data1_dd(:); rx_sym_data2_dd(:)];
+    rx_sym_dd_circshift = circshift(rx_sym_dd_eq, -floor((num_sym-num_pilot_sym)/2), 2);
+    rx_sym_data1_dd = rx_sym_dd_circshift(num_data_null_subc_head+1:num_data_null_subc_head+num_tx_sym_data1(1), :);
+    rx_sym_data2_dd = rx_sym_dd_circshift(num_data_null_subc_head+num_tx_sym_data1(1)+1:num_data_null_subc_head+num_tx_sym_data1(1)+num_tx_sym_data2(1), num_pilot_sym+1:end);
+    rx_sym_data3_dd = rx_sym_dd_circshift(num_data_null_subc_head+num_tx_sym_data1(1)+num_tx_sym_data2(1)+1:num_data_null_subc_head+num_tx_sym_data1(1)+num_tx_sym_data2(1)+num_tx_sym_data3(1), :);
+    rx_sym_data = [rx_sym_data1_dd(:); rx_sym_data2_dd(:); rx_sym_data3_dd(:)];
 else
     rx_sym_data = rx_sym_dd_eq(:);
 end
@@ -285,7 +336,7 @@ end
 
 % dump
 if test_scope
-    assignin('base', 'tx_sym_data', tx_sym_data);
+%     assignin('base', 'tx_sym_data_dd', tx_sym_data_dd);
     assignin('base', 'tx_sym_dd', tx_sym_dd);
     assignin('base', 'tx_sym_tf', tx_sym_tf);
     assignin('base', 'tx_sym_map_tf', tx_sym_map_tf);
@@ -301,11 +352,10 @@ if test_scope
     assignin('base', 'rx_sym_tf', rx_sym_tf);
     assignin('base', 'rx_sym_dd', rx_sym_dd);
     assignin('base', 'rx_sym_dd_eq', rx_sym_dd_eq);
-    assignin('base', 'rx_sym_data', rx_sym_data);
+    assignin('base', 'rx_sym_data_dd', rx_sym_data);
     
     assignin('base', 'ch_est_tf', ch_est_tf);
     assignin('base', 'ch_est_dd', ch_est_dd);
-    
     assignin('base', 'test_ch', test_ch);
     
     if strcmp(test_cheq, 'dd')

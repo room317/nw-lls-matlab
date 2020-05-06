@@ -42,6 +42,9 @@ prm_chreal_idx = find(contains(prm_set, 'REAL'), 1);
 prm_chperfect_idx = find(contains(prm_set, 'PERFECT'), 1);
 prm_chtfpilot_idx = find(contains(prm_set, 'TFPILOT'), 1);
 prm_chddpilot_idx = find(contains(prm_set, 'DDPILOT'), 1);
+prm_tfeq_idx = find(contains(prm_set, 'TFEQ'), 1);
+prm_tfeqmmse_idx = find(contains(prm_set, 'TFEQMMSE'), 1);
+prm_ddeq_idx = find(contains(prm_set, 'DDEQ'), 1);
 
 % prm_bw_idx = find(not(cellfun('isempty', strfind(prm_set, 'BW'))), 1);
 % prm_fc_idx = find(not(cellfun('isempty', strfind(prm_set, 'F'))), 1);
@@ -61,7 +64,7 @@ prm_chddpilot_idx = find(contains(prm_set, 'DDPILOT'), 1);
 
 % waveform
 if sum(double([isempty(prm_ofdm_idx) isempty(prm_otfs_idx)])) ~= 1
-    error('Waveform setting: choose one of these waveforms (OFDM, OTFS).')
+    error('Waveform setting: choose one of these waveforms: OFDM, OTFS.')
 elseif ~isempty(prm_ofdm_idx)
     prm_wave = 'ofdm'; % 'OFDM'
 else
@@ -102,7 +105,7 @@ end
 
 % fading channel
 if sum(double([isempty(prm_rmalos_idx) isempty(prm_rmanlos_idx) isempty(prm_umilos_idx) isempty(prm_uminlos_idx) isempty(prm_umalos_idx) isempty(prm_umanlos_idx) isempty(prm_eva_idx) isempty(prm_etu_idx) isempty(prm_tdla_idx) isempty(prm_tdlb_idx) isempty(prm_tdlc_idx) isempty(prm_tdld_idx) isempty(prm_tdle_idx) isempty(prm_test_idx)])) ~= 13
-    error('Fading channel setting: choose one of these models (RMALOS, RMANLOS, UMILOS, UMINLOS, UMALOS, UMANLOS, EVA, ETU, TDLA, TDLB, TDLC, TDLD, TDLE, TEST).')
+    error('Fading channel setting: choose one of these models: RMALOS, RMANLOS, UMILOS, UMINLOS, UMALOS, UMANLOS, EVA, ETU, TDLA, TDLB, TDLC, TDLD, TDLE, TEST.')
 elseif ~isempty(prm_rmalos_idx)
     prm_ch = 1; % 'RMa LOS'
 elseif ~isempty(prm_rmanlos_idx)
@@ -167,7 +170,7 @@ end
 
 % channel estimation
 if sum(double([isempty(prm_chreal_idx) isempty(prm_chperfect_idx) isempty(prm_chtfpilot_idx) isempty(prm_chddpilot_idx)])) ~= 3
-    error('Channel estimation setting: choose one of these (REAL, PERFECT, TFPILOT, DDPILOT).')
+    error('Channel estimation setting: choose one of these: REAL, PERFECT, TFPILOT, DDPILOT.')
 elseif ~isempty(prm_chreal_idx)
     prm_chest = 'real';     % channel from the fading block (interference exists)
 elseif ~isempty(prm_chperfect_idx)
@@ -176,6 +179,22 @@ elseif ~isempty(prm_chddpilot_idx)
     prm_chest = 'dd_pilot'; % channel from dd-domain pilots
 else
     prm_chest = 'tf_pilot'; % channel from tf-domain pilots
+end
+
+% channel estimation
+if sum(double([isempty(prm_tfeq_idx) isempty(prm_tfeqmmse_idx) isempty(prm_ddeq_idx)])) ~= 2
+    error('Channel equalization setting: choose one of these: TFEQ, DDEQ.')
+elseif ~isempty(prm_tfeq_idx)
+    prm_cheq = 'tfeq';  % tf-domain equalization
+elseif ~isempty(prm_tfeqmmse_idx)
+    prm_cheq = 'tfeq_mmse';  % tf-domain equalization
+else
+    prm_cheq = 'ddeq';  % dd-domain equalization
+end
+
+% check errors
+if strcmp(prm_wave, 'ofdm') && strcmp(prm_chest, 'dd_pilot')
+    error('OFDM cannot use dd-domain pilots.')
 end
 
 % output
@@ -190,5 +209,6 @@ nw_parse_prm.tblen = prm_tblen;
 nw_parse_prm.nsim = prm_nsim;
 nw_parse_prm.snr = prm_snr;
 nw_parse_prm.chest = prm_chest;
+nw_parse_prm.cheq = prm_cheq;
 
 end
