@@ -1,9 +1,9 @@
-% test dd pilot
+% test dd pilot_r3 (real channel testing)
 %   - snr_db: snr in db scale
 %   - test_synch: synch position
 %   - test_scope: print and plot results
 %   - test_seed: random seed for channel
-%   - test_chest: channel estimation option {'tf'. 'dd'}
+%   - test_chest: channel estimation option {'dd', 'perfect', 'real'}
 %   - test_cheq: channel eq. option {'tf', 'tf_mmse', 'dd'}
 % created: 2020.03.06
 % modified:
@@ -12,7 +12,7 @@
 %   - 2020.03.06: pilot estimation added
 %   - 2020.04.29: removed unused options
 
-function [qam_error, num_qam_per_pkt, ch_est_rmse, papr_db] = test_dd_pilot_r2(test_metric, test_synch, test_scope, test_seed, test_chest, test_cheq)
+function [qam_error, num_qam_per_pkt, ch_est_rmse, papr_db] = test_dd_pilot_r3(test_metric, test_synch, test_scope, test_seed, test_chest, test_cheq)
 
 % test
 snr_db = test_metric;
@@ -57,6 +57,7 @@ switch idx_fading
             'KFactor', test_ch.k_factor,...
             'DirectPathDopplerShift', test_ch.maximum_doppler_shift,...
             'MaximumDopplerShift', test_ch.maximum_doppler_shift,...
+            'PathGainsOutputPort', true, ...
             'DopplerSpectrum', test_ch.doppler_spectrum,...
             'NormalizePathGains', true);
     otherwise
@@ -160,7 +161,32 @@ tx_sig = tx_ofdm_sym_cp(:);
 papr_db = 10*log10(max(abs(tx_sig).^2)/mean(abs(tx_sig).^2));
 
 % pass signal through channel
-[tx_sig_faded, ~] = fading_ch(tx_sig);
+[tx_sig_faded, ch_path_gain] = fading_ch(tx_sig);       % ch_path_gain: normally constant per path, vary when doppler exists
+ch_info = info(fading_ch);
+ch_filter_coeff = ch_info.ChannelFilterCoefficients;    % ch_filter_coeff: channel filter coefficient per path
+num_path = length(fading_ch.PathDelays);                % num_path: number of path
+
+% reproduce real channel (time saving, option 1)
+len_ch_filter = size(ch_filter_coeff, 2);
+ch_real_mat_t = zeros(num_ofdm_subc, num_ofdm_subc, num_sym);
+ch_real_halfmap_mat_tf = zeros(num_ofdm_subc, num_ofdm_subc, num_sym);
+coeff_mat = zeros(num_ofdm_subc, num_ofdm_subc, num_path);
+ch_path_gain_reshape = reshape(ch_path_gain, num_ofdm_subc+len_cp, num_ofdm_sym, num_path);
+ch_path_gain_reshape(1:len_cp, :, :) = [];
+ch_path_gain_reshape = ch_path_gain_reshape(:, idx_ofdm_map(2)+1:idx_ofdm_map(2)+num_sym, :);
+for idx_ch_path = 1:num_path
+    coeff_row = circshift([ch_filter_coeff(idx_ch_path, end:-1:1) zeros(1, num_ofdm_subc - len_ch_filter)], -len_ch_filter+1);
+    coeff_col = [ch_filter_coeff(idx_ch_path, :) zeros(1, num_ofdm_subc - len_ch_filter)];
+    coeff_mat(:, :, idx_ch_path) = toeplitz(coeff_col, coeff_row);
+end
+for idx_ch_sym = 1:num_sym
+    path_gain_mat = ch_path_gain_reshape(:, idx_ch_sym, :);
+    ch_mat_per_path = path_gain_mat .* coeff_mat;
+    ch_real_mat_t(:, :, idx_ch_sym) = sum(ch_mat_per_path, 3);
+    ch_real_halfmap_mat_tf(:, :, idx_ch_sym) = ifft(fft(ch_real_mat_t(:, :, idx_ch_sym), [], 1), [], 2);
+end
+ch_real_mat_shift_tf = fftshift(fftshift(ch_real_halfmap_mat_tf, 2), 1);
+ch_real_mat_tf = ch_real_mat_shift_tf(idx_ofdm_map(1)+1:idx_ofdm_map(1)+num_subc, idx_ofdm_map(1)+1:idx_ofdm_map(1)+num_subc, :);
 
 % add gaussian noise
 if test_scope
@@ -193,15 +219,14 @@ rx_sym_tf = rx_sym_map_shift_tf(idx_ofdm_map(1)+1:idx_ofdm_map(1)+num_subc, idx_
 % 2d inverse sfft
 rx_sym_dd = sqrt(num_subc/num_sym) * fft(ifft(rx_sym_tf, [], 1), [], 2);
 
+% extract diagonal elements of real channel
+ch_est_tf_real = zeros(num_subc, num_sym);
+for idx_sym = 1:num_sym
+    ch_est_tf_real(:, idx_sym) = diag(ch_real_mat_tf(:, :, idx_sym));  % diagonal term only
+end
+
 % estimate channel
-if strcmp(test_chest, 'tf')
-    % estimate tf channel
-    ch_est_tf_perfect = rx_sym_tf ./ tx_sym_tf;     % tf domain
-    ch_est_tf = ch_est_tf_perfect;
-    
-    % estimate dd channel
-    ch_est_dd = sqrt(num_subc/num_sym) * fft(ifft(ch_est_tf, [], 1), [], 2);
-elseif strcmp(test_chest, 'dd')
+if strcmp(test_chest, 'dd')
     % demap pilot
     rx_sym_dd_circshift = circshift(rx_sym_dd, -floor((num_sym-num_pilot_sym)/2), 2);
     rx_sym_pilot_dd = rx_sym_dd_circshift(num_data_null_subc_head+num_tx_sym_data1(1)+1:num_data_null_subc_head+num_tx_sym_data1(1)+num_pilot_subc, 1:num_pilot_sym);
@@ -215,28 +240,42 @@ elseif strcmp(test_chest, 'dd')
     
     % estimate tf channel
     ch_est_tf = sqrt(num_sym/num_subc) * fft(ifft(ch_est_dd, [], 2), [], 1);
+elseif strcmp(test_chest, 'perfect')
+    % estimate tf channel
+    ch_est_tf_perfect = rx_sym_tf ./ tx_sym_tf;     % tf domain
+    ch_est_tf = ch_est_tf_perfect;
+    
+    % estimate dd channel
+    ch_est_dd = sqrt(num_subc/num_sym) * fft(ifft(ch_est_tf, [], 1), [], 2);
+elseif strcmp(test_chest, 'real')
+    % get real channel
+    ch_est_tf = ch_est_tf_real;
+    
+    % estimate dd channel
+    ch_est_dd = sqrt(num_subc/num_sym) * fft(ifft(ch_est_tf, [], 1), [], 2);
 else
-    error('test_chest value must be one of these: {tf, dd}')
+    error('test_chest value must be one of these: {''dd'', ''perfect'', ''real''}')
 end
 
 % calculate channel rmse
-if strcmp(test_chest, 'dd')
-    % calculate perfect tf channel
-    ch_est_tf_perfect = rx_sym_tf ./ tx_sym_tf;     % tf domain
-    
-    % calculate perfect dd channel
-    ch_est_dd_perfect = sqrt(num_subc/num_sym) * fft(ifft(ch_est_tf_perfect, [], 1), [], 2);
-    
-    % calculate channel rmse
-    ch_est_rmse = sqrt(mean(abs(ch_est_dd_perfect(:)-ch_est_dd(:)).^2));
-    
-    if test_scope
-        figure, subplot(1, 2, 1), mesh(1:num_sym, 1:num_subc, abs(ch_est_tf_perfect)), test_axis = axis; subplot(1, 2, 2), mesh(1:num_sym, 1:num_subc, abs(ch_est_tf)), axis(test_axis)
-        figure, subplot(1, 2, 1), mesh(1:num_sym, 1:num_subc, abs(ch_est_dd_perfect)), test_axis = axis; subplot(1, 2, 2), mesh(1:num_sym, 1:num_subc, abs(ch_est_dd)), axis(test_axis)
-        pause
+ch_est_rmse = sqrt(mean(abs(ch_est_tf_real-ch_est_tf).^2, 'all'));  % diagonal term only
+
+% check channel estimation
+if test_scope
+    ch_real_mat_diag_tf = zeros(num_subc, num_sym);
+    for idx_sym = 1 : num_sym
+        ch_real_mat_diag_tf(:, idx_sym) = diag(ch_real_mat_tf(:, :, idx_sym));
     end
-else
-    ch_est_rmse = [];
+    figure
+    subplot(1, 2, 1), mesh(1:num_sym, 1:num_subc, abs(ch_est_tf)), test_axis = axis;
+    subplot(1, 2, 2), mesh(1:num_sym, 1:num_subc, abs(ch_real_mat_diag_tf)), axis(test_axis)
+    pause
+%     for idx_sym = 1 : num_sym
+%         figure(10)
+%         subplot(1, 2, 1), mesh(1:num_subc, 1:num_subc, abs(diag(ch_est_tf(:, idx_sym)))), test_axis = axis;
+%         subplot(1, 2, 2), mesh(1:num_subc, 1:num_subc, abs(ch_real_mat_tf(:, :, idx_sym))), axis(test_axis)
+%         pause
+%     end
 end
 
 % equalize channel

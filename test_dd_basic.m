@@ -8,6 +8,9 @@
 % modified:
 %   - 2020.03.28:
 %   - 2020.04.29:
+% memo
+%   - https://kr.mathworks.com/help/comm/ref/comm.rayleighchannel-system-object.html#d120e191883
+%   - full spreading without cp condition required for t-domain matching
 
 function ch_est_rmse = test_dd_basic(test_synch, test_pilot, test_scope, test_seed)
 
@@ -23,7 +26,7 @@ f_s = f_subc*num_ofdm_subc;
 % t_sym = (num_ofdm_subc+len_cp)/f_s;
 cfo_norm = 0; % normalized cfo. cfo = cfo_norm/t_sym;
 carrier_freq_mhz = 4000;
-velocity_kmh = 500; % 120;
+velocity_kmh = 120; % 120;
 idx_fading = 9; % 9: TDL-A, 12: TDL-D
 delay_spread_rms_us = 0.1; % 0.1; %0.1e-6;
 snr_db = 25;
@@ -50,6 +53,7 @@ switch idx_fading
             'KFactor', test_ch.k_factor,...
             'DirectPathDopplerShift', test_ch.maximum_doppler_shift,...
             'MaximumDopplerShift', test_ch.maximum_doppler_shift,...
+            'PathGainsOutputPort', true, ...
             'DopplerSpectrum', test_ch.doppler_spectrum,...
             'NormalizePathGains', true);
     otherwise
@@ -59,6 +63,7 @@ switch idx_fading
             'AveragePathGains', test_ch.average_path_gains, ...
             'NormalizePathGains', true, ...
             'MaximumDopplerShift', test_ch.maximum_doppler_shift, ...
+            'PathGainsOutputPort', true, ...
             'DopplerSpectrum', test_ch.doppler_spectrum);
 end
 
@@ -95,7 +100,7 @@ tx_sig = tx_ofdm_sym_cp(:);
 
 % pass signal through channel
 rng(test_seed)
-tx_sig_faded = fading_ch(tx_sig);
+[tx_sig_faded, ~] = fading_ch(tx_sig);
 
 % add gaussian noise
 rx_sig = tx_sig_faded;
@@ -212,6 +217,7 @@ switch idx_fading
             'KFactor', test_ch.k_factor,...
             'DirectPathDopplerShift', test_ch.maximum_doppler_shift,...
             'MaximumDopplerShift', test_ch.maximum_doppler_shift,...
+            'PathGainsOutputPort', true, ...
             'DopplerSpectrum', test_ch.doppler_spectrum,...
             'NormalizePathGains', true);
     otherwise
@@ -221,6 +227,7 @@ switch idx_fading
             'AveragePathGains', test_ch.average_path_gains, ...
             'NormalizePathGains', true, ...
             'MaximumDopplerShift', test_ch.maximum_doppler_shift, ...
+            'PathGainsOutputPort', true, ...
             'DopplerSpectrum', test_ch.doppler_spectrum);
 end
 
@@ -261,7 +268,7 @@ tx_sig = tx_ofdm_sym_cp(:);
 
 % pass signal through channel
 rng(test_seed)
-tx_sig_faded = fading_ch(tx_sig);
+[tx_sig_faded, ~] = fading_ch(tx_sig);
 
 % add gaussian noise
 rx_sig = tx_sig_faded;

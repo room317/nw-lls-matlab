@@ -36,7 +36,7 @@ for metric_idx = 1 : METROCCnt
     
     for sim_idx = 1 : NumSim
         % simulate single packet
-        [qam_error, num_qam_per_pkt, ch_est_rmse] = test_tf_pilot(test_metric, test_synch, false, -1, test_chest, test_cheq, test_dmrs);
+        [qam_error, num_qam_per_pkt, ch_est_rmse, ~] = test_tf_pilot_r1(test_metric, test_synch, false, -1, test_chest, test_cheq, test_dmrs);
         
         % count packet error
         total_qam_error = total_qam_error + qam_error;

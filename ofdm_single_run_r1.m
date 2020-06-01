@@ -47,7 +47,7 @@ else
 end
 
 % calculate noise variance
-noise_var = 10 ^ ((-0.1)*snr_db);
+noise_var = (num.ndft/num.nfft)*(10^((-0.1)*snr_db));
 
 % generate bit stream
 tx_bit = randi([0 1], sim.len_tb_bit, 1);

@@ -9,7 +9,7 @@ test_chest = 'dd';
 test_cheq = 'tf';
 
 % set parameters
-NumSim = 10000;
+NumSim = 100;
 METRICStart = 20;
 METROCCnt = 10;
 METRICStep = 2;
@@ -35,7 +35,7 @@ for metric_idx = 1 : METROCCnt
     
     for sim_idx = 1 : NumSim
         % simulate single packet
-        [qam_error, num_qam_per_pkt, ch_est_rmse] = test_dd_pilot_r2(test_metric, test_synch, false, -1, test_chest, test_cheq);
+        [qam_error, num_qam_per_pkt, ch_est_rmse, ~] = test_dd_pilot_r3(test_metric, test_synch, false, -1, test_chest, test_cheq);
         
         % count packet error
         total_qam_error = total_qam_error + qam_error;
