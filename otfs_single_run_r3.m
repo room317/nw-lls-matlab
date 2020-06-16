@@ -16,8 +16,9 @@
 % - real channel estimation with single tone pilot added: 2020.02.19
 % - real channel compensation in tf domain added: 2020.02.19
 % - real channel compensation in dd domain added: 2020.02.19
+% - variable name changed: 2020.06.09
 
-function pkt_error = otfs_single_run_r2(sim, cc, rm, num, snr_db, ch, chest_option, cheq_option)
+function pkt_error = otfs_single_run_r3(sim, cc, rm, num, snr_db, ch, chest_option, cheq_option)
 
 % create turbo encoder/decoder
 turbo_enc = comm.TurboEncoder('TrellisStructure', cc.tc_trellis, ...
@@ -54,7 +55,7 @@ else
 end
 
 % calculate noise variance
-noise_var = 10 ^ ((-0.1)*snr_db);
+noise_var = (num.num_subc_usr/num.nfft)*(10 ^ ((-0.1)*snr_db));
 
 % generate bit stream
 tx_bit = randi([0 1], sim.len_tb_bit, 1);
@@ -76,7 +77,7 @@ tx_bit_ratematch = tx_ratematch(tx_bit_enc, rm);
 tx_sym = qammod(tx_bit_ratematch, 2^rm.Qm, 'InputType', 'bit', 'UnitAveragePower', true);
 
 % simulate per subframe
-tx_sym_subfrm = reshape(tx_sym, num.len_rb_sym_user, []);
+tx_sym_subfrm = reshape(tx_sym, num.num_qamsym_usr, []);
 rx_sym_subfrm = zeros(size(tx_sym_subfrm));
 for subfrm_idx = 1 : size(tx_sym_subfrm, 2)
     
@@ -86,18 +87,18 @@ for subfrm_idx = 1 : size(tx_sym_subfrm, 2)
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         % generate single tone in dd domain
-        tx_sym_dd_ndft = zeros(num.ndft, num.num_ofdmsym_per_subframe);
-        tx_sym_dd_ndft(1, 1) = sqrt(num.ndft*num.num_ofdmsym_per_subframe);
+        tx_sym_dd_ndft = zeros(num.num_subc_usr, num.num_ofdmsym_usr);
+        tx_sym_dd_ndft(1, 1) = sqrt(num.num_subc_usr*num.num_ofdmsym_usr);
         
         % 2d sfft (otfs transform, from delay-doppler domain to freq-time domain)
-        tx_sym_tf_ndft = sqrt(num.num_ofdmsym_per_subframe/num.ndft)*fft(ifft(tx_sym_dd_ndft, [], 2), [], 1);
+        tx_sym_tf_ndft = sqrt(num.num_ofdmsym_usr/num.num_subc_usr)*fft(ifft(tx_sym_dd_ndft, [], 2), [], 1);
         
         % map otfs symbols to resource block (otfs)
         tx_sym_tf_subc = tx_sym_tf_ndft;
         
         % map to the resource block (nfft x symbols)
-        tx_sym_tf_nfft = zeros(num.nfft, num.num_ofdmsym_per_subframe);
-        tx_sym_tf_nfft((num.nfft/2)-(num.num_subcarrier/2)+1:(num.nfft/2)+(num.num_subcarrier/2), :) = tx_sym_tf_subc;
+        tx_sym_tf_nfft = zeros(num.nfft, num.num_ofdmsym_usr);
+        tx_sym_tf_nfft((num.nfft/2)-(num.num_subc_bw/2)+1:(num.nfft/2)+(num.num_subc_bw/2), :) = tx_sym_tf_subc;
         tx_sym_tf_nfft_shift = fftshift(tx_sym_tf_nfft, 1);
         
         % ofdm modulate
@@ -121,7 +122,7 @@ for subfrm_idx = 1 : size(tx_sym_subfrm, 2)
         
         if strcmp(cheq_option, 'ddeq')
             % reshape
-            rx_ofdm_sym_cp = reshape(rx_ofdm_sym_serial, num.nfft+num.num_cp, num.num_ofdmsym_per_subframe);
+            rx_ofdm_sym_cp = reshape(rx_ofdm_sym_serial, num.nfft+num.num_cp, num.num_ofdmsym_usr);
             
             % remove cp
             rx_ofdm_sym = rx_ofdm_sym_cp(num.num_cp+1:end,:);
@@ -131,13 +132,13 @@ for subfrm_idx = 1 : size(tx_sym_subfrm, 2)
             
             % demap subcarriers (subcarrier x symbols)
             rx_sym_tf_nfft_shift = fftshift(rx_sym_tf_nfft, 1);
-            rx_sym_tf_subc = rx_sym_tf_nfft_shift(num.nfft/2-num.num_subcarrier/2+1:num.nfft/2+num.num_subcarrier/2, :);
+            rx_sym_tf_subc = rx_sym_tf_nfft_shift(num.nfft/2-num.num_subc_bw/2+1:num.nfft/2+num.num_subc_bw/2, :);
             
             % demap symbols from subcarriers
             rx_sym_tf_ndft = rx_sym_tf_subc;
             
             % 2d inverse sfft
-            rx_sym_dd_ndft_subfrm = sqrt(num.ndft/num.num_ofdmsym_per_subframe)*fft(ifft(rx_sym_tf_ndft, [], 1), [], 2);
+            rx_sym_dd_ndft_subfrm = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(rx_sym_tf_ndft, [], 1), [], 2);
             
             % estimate real channel in dd-domain
             ch_dd_ndft_real = rx_sym_dd_ndft_subfrm;
@@ -154,31 +155,31 @@ for subfrm_idx = 1 : size(tx_sym_subfrm, 2)
     %%%%%%%%%%%%%%%%%%%%
     
     % map data and pilot symbols
-    if strcmp(chest_option, 'dd_pilot')
+    if strcmp(chest_option, 'dd_singletone')
 %         [tx_sym_dd_ndft, idx_pilot_sym] = otfs_sym_map(tx_sym_subfrm(:, subfrm_idx), num);
         tx_sym_dd_ndft = otfs_sym_map_r1(tx_sym_subfrm(:, subfrm_idx), num, 2);
     else
         % generate pilot symbols
-        tx_sym_dd_ndft_pilot = randi([0 1], num.ndft, num.num_pilot_ofdmsym_per_subframe)*2-1;
+        tx_sym_dd_ndft_pilot = randi([0 1], num.num_subc_usr, num.num_ofdmsym_pilot_usr)*2-1;
         
         % reshape data symbols
-        tx_sym_dd_ndft_data = reshape(tx_sym_subfrm(:, subfrm_idx), num.ndft, num.num_data_ofdmsym_per_subframe);
+        tx_sym_dd_ndft_data = reshape(tx_sym_subfrm(:, subfrm_idx), num.num_subc_usr, num.num_ofdmsym_data_usr);
     
         % map data and pilot symbols
-        tx_sym_dd_ndft = zeros(num.ndft, num.num_ofdmsym_per_subframe);
-        tx_sym_dd_ndft(:, num.idx_data_ofdmsym) = tx_sym_dd_ndft_data;
-        tx_sym_dd_ndft(:, num.idx_pilot_ofdmsym) = tx_sym_dd_ndft_pilot;
+        tx_sym_dd_ndft = zeros(num.num_subc_usr, num.num_ofdmsym_usr);
+        tx_sym_dd_ndft(:, num.idx_ofdmsym_data_usr) = tx_sym_dd_ndft_data;
+        tx_sym_dd_ndft(:, num.idx_ofdmsym_pilot_usr) = tx_sym_dd_ndft_pilot;
     end
     
     % 2d sfft (otfs transform, from delay-doppler domain to freq-time domain)
-    tx_sym_tf_ndft = sqrt(num.num_ofdmsym_per_subframe/num.ndft)*fft(ifft(tx_sym_dd_ndft, [], 2), [], 1);
+    tx_sym_tf_ndft = sqrt(num.num_ofdmsym_usr/num.num_subc_usr)*fft(ifft(tx_sym_dd_ndft, [], 2), [], 1);
     
     % map otfs symbols to resource block (otfs)
     tx_sym_tf_subc = tx_sym_tf_ndft;
     
     % map to the resource block (nfft x symbols)
-    tx_sym_tf_nfft = zeros(num.nfft, num.num_ofdmsym_per_subframe);
-    tx_sym_tf_nfft((num.nfft/2)-(num.num_subcarrier/2)+1:(num.nfft/2)+(num.num_subcarrier/2), :) = tx_sym_tf_subc;
+    tx_sym_tf_nfft = zeros(num.nfft, num.num_ofdmsym_usr);
+    tx_sym_tf_nfft((num.nfft/2)-(num.num_subc_bw/2)+1:(num.nfft/2)+(num.num_subc_bw/2), :) = tx_sym_tf_subc;
     tx_sym_tf_nfft_shift = fftshift(tx_sym_tf_nfft, 1);
     
     % ofdm modulate
@@ -200,7 +201,7 @@ for subfrm_idx = 1 : size(tx_sym_subfrm, 2)
     rx_ofdm_sym_serial = awgn(tx_ofdm_sym_faded, snr_db, 'measured');
     
     % reshape
-    rx_ofdm_sym_cp = reshape(rx_ofdm_sym_serial, num.nfft+num.num_cp, num.num_ofdmsym_per_subframe);
+    rx_ofdm_sym_cp = reshape(rx_ofdm_sym_serial, num.nfft+num.num_cp, num.num_ofdmsym_usr);
     
     % remove cp
     rx_ofdm_sym = rx_ofdm_sym_cp(num.num_cp+1:end,:);
@@ -210,13 +211,13 @@ for subfrm_idx = 1 : size(tx_sym_subfrm, 2)
     
     % demap subcarriers (subcarrier x symbols)
     rx_sym_tf_nfft_shift = fftshift(rx_sym_tf_nfft, 1);
-    rx_sym_tf_subc = rx_sym_tf_nfft_shift(num.nfft/2-num.num_subcarrier/2+1:num.nfft/2+num.num_subcarrier/2, :);
+    rx_sym_tf_subc = rx_sym_tf_nfft_shift(num.nfft/2-num.num_subc_bw/2+1:num.nfft/2+num.num_subc_bw/2, :);
     
     % demap symbols from subcarriers
     rx_sym_tf_ndft = rx_sym_tf_subc;
     
     % estimate and equalize channel
-    if strcmp(cheq_option, 'tfeq') || strcmp(cheq_option, 'tfeq_mmse')
+    if strcmp(cheq_option, 'tfeq_zf') || strcmp(cheq_option, 'tfeq_mmse')
         % estimate channel
         if strcmp(chest_option, 'real')
             % get real channel
@@ -224,47 +225,47 @@ for subfrm_idx = 1 : size(tx_sym_subfrm, 2)
         elseif  strcmp(chest_option, 'perfect')
             % estimate channel in tf-domain
             ch_est_tf_ndft = otfs_ch_est_tf(tx_ofdm_sym_serial, tx_ofdm_sym_faded, num, chest_option);
-        elseif  strcmp(chest_option, 'tf_pilot')
+        elseif  strcmp(chest_option, 'tf_lteup')
             % estimate channel in tf-domain
             ch_est_tf_ndft = otfs_ch_est_tf(tx_ofdm_sym_serial, rx_ofdm_sym_serial, num, chest_option);
         else
             % 2d inverse sfft
-            rx_sym_dd_ndft = sqrt(num.ndft/num.num_ofdmsym_per_subframe)*fft(ifft(rx_sym_tf_ndft, [], 1), [], 2);
+            rx_sym_dd_ndft = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(rx_sym_tf_ndft, [], 1), [], 2);
             
             % estimate channel in dd-domain
             ch_est_dd_ndft = otfs_ch_est_dd(rx_sym_dd_ndft, num);
             
             % transform dd channel to tf channel
-            ch_est_tf_ndft = sqrt(num.num_ofdmsym_per_subframe/num.ndft)*fft(ifft(ch_est_dd_ndft, [], 2), [], 1);
+            ch_est_tf_ndft = sqrt(num.num_ofdmsym_usr/num.num_subc_usr)*fft(ifft(ch_est_dd_ndft, [], 2), [], 1);
         end
         
         % equalize channel in tf-domain
         rx_sym_tf_ndft_eq = otfs_ch_eq_tf(rx_sym_tf_ndft, ch_est_tf_ndft, noise_var, cheq_option);
         
         % 2d inverse sfft
-        rx_sym_dd_ndft_eq = sqrt(num.ndft/num.num_ofdmsym_per_subframe)*fft(ifft(rx_sym_tf_ndft_eq, [], 1), [], 2);
-%         rx_sym_dd_ndft_eq = circshift(rx_sym_dd_ndft_eq, num.num_guard_delay);
+        rx_sym_dd_ndft_eq = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(rx_sym_tf_ndft_eq, [], 1), [], 2);
+%         rx_sym_dd_ndft_eq = circshift(rx_sym_dd_ndft_eq, num.num_delay_guard);
         
-%         figure, mesh(1:num.num_ofdmsym_per_subframe, 1:num.ndft, abs(tx_sym_dd_ndft))
-%         figure, mesh(1:num.num_ofdmsym_per_subframe, 1:num.nfft+num.num_cp, abs(rx_ofdm_sym_cp))
-%         figure, mesh(1:num.num_ofdmsym_per_subframe, 1:num.ndft, abs(rx_sym_dd_ndft))
-%         figure, mesh(1:num.num_ofdmsym_per_subframe, 1:num.ndft, abs(rx_sym_dd_ndft_eq))
-%         figure, plot(1:num.ndft, abs(tx_sym_dd_ndft))
+%         figure, mesh(1:num.num_ofdmsym_usr, 1:num.num_subc_usr, abs(tx_sym_dd_ndft))
+%         figure, mesh(1:num.num_ofdmsym_usr, 1:num.nfft+num.num_cp, abs(rx_ofdm_sym_cp))
+%         figure, mesh(1:num.num_ofdmsym_usr, 1:num.num_subc_usr, abs(rx_sym_dd_ndft))
+%         figure, mesh(1:num.num_ofdmsym_usr, 1:num.num_subc_usr, abs(rx_sym_dd_ndft_eq))
+%         figure, plot(1:num.num_subc_usr, abs(tx_sym_dd_ndft))
 %         figure, plot(1:num.nfft+num.num_cp, abs(tx_ofdm_sym_cp))
 %         figure, plot(1:num.nfft+num.num_cp, abs(rx_ofdm_sym_cp))
-%         figure, plot(1:num.ndft, abs(rx_sym_dd_ndft))
-%         figure, plot(1:num.ndft, abs(rx_sym_dd_ndft_eq))
-%         figure, plot(1:num.ndft, abs(circshift(rx_sym_dd_ndft_eq, num.num_guard_delay)))
+%         figure, plot(1:num.num_subc_usr, abs(rx_sym_dd_ndft))
+%         figure, plot(1:num.num_subc_usr, abs(rx_sym_dd_ndft_eq))
+%         figure, plot(1:num.num_subc_usr, abs(circshift(rx_sym_dd_ndft_eq, num.num_delay_guard)))
 %         pause
     else
         % 2d inverse sfft
-        rx_sym_dd_ndft = sqrt(num.ndft/num.num_ofdmsym_per_subframe)*fft(ifft(rx_sym_tf_ndft, [], 1), [], 2);
+        rx_sym_dd_ndft = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(rx_sym_tf_ndft, [], 1), [], 2);
         
         % estimate channel
         if strcmp(chest_option, 'real')
             % get real channel
             ch_est_dd_ndft = ch_dd_ndft_real;
-        elseif  strcmp(chest_option, 'dd_pilot')
+        elseif  strcmp(chest_option, 'dd_singletone')
             % estimate channel in dd-domain
             ch_est_dd_ndft = otfs_ch_est_dd(rx_sym_dd_ndft, num);
         else
@@ -276,10 +277,10 @@ for subfrm_idx = 1 : size(tx_sym_subfrm, 2)
     end
     
     % demap data qam symbols
-    if strcmp(chest_option, 'dd_pilot')
+    if strcmp(chest_option, 'dd_singletone')
         [rx_sym_dd_ndft_data, ~] = otfs_sym_demap_r1(rx_sym_dd_ndft_eq, num, 2);
     else
-        rx_sym_dd_ndft_data = rx_sym_dd_ndft_eq(:, num.idx_data_ofdmsym);
+        rx_sym_dd_ndft_data = rx_sym_dd_ndft_eq(:, num.idx_ofdmsym_data_usr);
     end
     
     % buffer qam symbols

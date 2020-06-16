@@ -1,7 +1,7 @@
 function rx_sym_dd_ndft_eq = otfs_ch_eq_dd(rx_sym_dd_ndft, ch_est_dd_ndft, num)
 
 % generate block circular channel matrix
-len_ch = [num.num_subc_usr num.num_ofdmsym_usr];
+len_ch = [num.ndft num.num_ofdmsym_per_subframe];
 len_ch_pad_head = len_ch/2;
 len_ch_pad_tail = len_ch/2;
 len_ch_pad_zero = len_ch;
@@ -20,11 +20,11 @@ new_ch_full = zeros(len_ch(1)*(len_ch(2)+len_ch_pad_zero(2)), len_ch(1)*(len_ch(
 for k = 1 : len_ch(2)+len_ch_pad_zero(2)
     new_ch_full(len_ch(1)*(k-1)+1 : len_ch(1)*k, :) = circshift(sub_ch_reshape, (k-len_ch(2))*len_ch(1), 2);
 end
-new_ch = new_ch_full(len_ch_pad_head(2)*len_ch(1)+1 : end-len_ch_pad_tail(2)*len_ch(1), 1:len_ch(2)*len_ch(1)) / sqrt(num.num_subc_usr*num.num_ofdmsym_usr);
+new_ch = new_ch_full(len_ch_pad_head(2)*len_ch(1)+1 : end-len_ch_pad_tail(2)*len_ch(1), 1:len_ch(2)*len_ch(1)) / sqrt(num.ndft*num.num_ofdmsym_per_subframe);
 
 % equalize channel in dd domain
 rx_sym_dd_ndft_eq_vec = new_ch \ rx_sym_dd_ndft(:);
-rx_sym_dd_ndft_eq = reshape(rx_sym_dd_ndft_eq_vec, num.num_subc_usr, num.num_ofdmsym_usr);
+rx_sym_dd_ndft_eq = reshape(rx_sym_dd_ndft_eq_vec, num.ndft, num.num_ofdmsym_per_subframe);
 
 % % dump variables
 % assignin('base', 'rx_sym_dd_ndft', rx_sym_dd_ndft);

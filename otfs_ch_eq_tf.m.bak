@@ -1,6 +1,6 @@
 function rx_sym_tf_ndft_eq = otfs_ch_eq_tf(rx_sym_tf_ndft, ch_est_tf_ndft, noise_var, cheq_option)
 
-if strcmp(cheq_option, 'tfeq_zf')
+if strcmp(cheq_option, 'tfeq')
     % equalize channel
     rx_sym_tf_ndft_eq = rx_sym_tf_ndft ./ ch_est_tf_ndft;
 elseif strcmp(cheq_option, 'tfeq_mmse')

@@ -35,22 +35,22 @@ if ~ismember(map_plan, [1 2])
 end
 
 % generate pilot symbols
-pilot_sym = zeros(num.num_delay_pilot, num.num_doppler_pilot);
+pilot_sym = zeros(num.num_pilot_delay, num.num_pilot_doppler);
 pilot_sym(1, 1) = 1;
 
 % pad guard symbols to pilot symbols
-guard_sym = zeros(num.num_delay_guard, num.num_doppler_pilot);
-pilot_guard_sym = [guard_sym; pilot_sym]*sqrt((num.num_delay_pilot+num.num_delay_guard)*num.num_doppler_pilot);
+guard_sym = zeros(num.num_guard_delay, num.num_pilot_doppler);
+pilot_guard_sym = [guard_sym; pilot_sym]*sqrt((num.num_pilot_delay+num.num_guard_delay)*num.num_pilot_doppler);
 
 % fftshift pilot symbols
-pilot_guard_sym_upper = pilot_guard_sym(:, 1:ceil(num.num_doppler_pilot/2));
-pilot_guard_sym_lower = pilot_guard_sym(:, ceil(num.num_doppler_pilot/2)+1:end);
+pilot_guard_sym_upper = pilot_guard_sym(:, 1:ceil(num.num_pilot_doppler/2));
+pilot_guard_sym_lower = pilot_guard_sym(:, ceil(num.num_pilot_doppler/2)+1:end);
 
 % reshape data symbols
-data_sym_vec_a = data_sym_vec(1:(num.num_delay_pilot+num.num_delay_guard)*(num.num_ofdmsym_usr-num.num_doppler_pilot));
-data_sym_vec_b = data_sym_vec((num.num_delay_pilot+num.num_delay_guard)*(num.num_ofdmsym_usr-num.num_doppler_pilot)+1:end);
-data_sym_a = reshape(data_sym_vec_a, num.num_delay_pilot+num.num_delay_guard, []);
-data_sym_b = reshape(data_sym_vec_b, num.num_subc_usr-(num.num_delay_pilot+num.num_delay_guard), []);
+data_sym_vec_a = data_sym_vec(1:(num.num_pilot_delay+num.num_guard_delay)*(num.num_ofdmsym_per_subframe-num.num_pilot_doppler));
+data_sym_vec_b = data_sym_vec((num.num_pilot_delay+num.num_guard_delay)*(num.num_ofdmsym_per_subframe-num.num_pilot_doppler)+1:end);
+data_sym_a = reshape(data_sym_vec_a, num.num_pilot_delay+num.num_guard_delay, []);
+data_sym_b = reshape(data_sym_vec_b, num.ndft-(num.num_pilot_delay+num.num_guard_delay), []);
 
 % map resource block
 tx_sym_dd_ndft_guard = [ ...
@@ -60,12 +60,12 @@ tx_sym_dd_ndft_guard = [ ...
 % send head guard to tail
 if map_plan == 1
     tx_sym_dd_ndft = [ ...
-        tx_sym_dd_ndft_guard(ceil(num.num_delay_guard/2)+1:end, :);
-        tx_sym_dd_ndft_guard(1:ceil(num.num_delay_guard/2), :)];
+        tx_sym_dd_ndft_guard(ceil(num.num_guard_delay/2)+1:end, :);
+        tx_sym_dd_ndft_guard(1:ceil(num.num_guard_delay/2), :)];
 else
     tx_sym_dd_ndft = [ ...
-        tx_sym_dd_ndft_guard(num.num_delay_guard+1:end, :);
-        tx_sym_dd_ndft_guard(1:num.num_delay_guard, :)];
+        tx_sym_dd_ndft_guard(num.num_guard_delay+1:end, :);
+        tx_sym_dd_ndft_guard(1:num.num_guard_delay, :)];
 end
 
 % % dump variables

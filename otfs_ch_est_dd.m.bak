@@ -2,19 +2,19 @@ function ch_est_dd_ndft = otfs_ch_est_dd(rx_sym_dd_ndft, num)
 
 % demap pilot symbols
 [~, pilot_sym] = otfs_sym_demap_r1(rx_sym_dd_ndft, num, 2);
-pilot_sym_upper = pilot_sym(:, 1:ceil(num.num_doppler_pilot/2));
-pilot_sym_lower = pilot_sym(:, end-floor(num.num_doppler_pilot/2)+1:end);
+pilot_sym_upper = pilot_sym(:, 1:ceil(num.num_pilot_doppler/2));
+pilot_sym_lower = pilot_sym(:, end-floor(num.num_pilot_doppler/2)+1:end);
 
 % estimate channels
-ch_est_dd_ndft_raw = zeros(num.num_subc_usr, num.num_ofdmsym_usr);
-scale_ch_est_dd = sqrt((num.num_subc_usr*num.num_ofdmsym_usr)/((num.num_delay_pilot+num.num_delay_guard)*num.num_doppler_pilot));
-% ch_est_dd_ndft_raw(1:num.num_delay_pilot, 1:ceil(num.num_doppler_pilot/2)) = pilot_sym_upper*scale_ch_est_dd;
-% ch_est_dd_ndft_raw(1:num.num_delay_pilot, end-floor(num.num_doppler_pilot/2)+1:end) = pilot_sym_lower*scale_ch_est_dd;
+ch_est_dd_ndft_raw = zeros(num.ndft, num.num_ofdmsym_per_subframe);
+scale_ch_est_dd = sqrt((num.ndft*num.num_ofdmsym_per_subframe)/((num.num_pilot_delay+num.num_guard_delay)*num.num_pilot_doppler));
+% ch_est_dd_ndft_raw(1:num.num_pilot_delay, 1:ceil(num.num_pilot_doppler/2)) = pilot_sym_upper*scale_ch_est_dd;
+% ch_est_dd_ndft_raw(1:num.num_pilot_delay, end-floor(num.num_pilot_doppler/2)+1:end) = pilot_sym_lower*scale_ch_est_dd;
 ch_est_buffer = 0;
-ch_est_dd_ndft_raw(1:num.num_delay_pilot-ch_est_buffer, 1:ceil(num.num_doppler_pilot/2)) = pilot_sym_upper(1:end-ch_est_buffer, :)*scale_ch_est_dd;
-ch_est_dd_ndft_raw(1:num.num_delay_pilot-ch_est_buffer, end-floor(num.num_doppler_pilot/2)+1:end) = pilot_sym_lower(1:end-ch_est_buffer, :)*scale_ch_est_dd;
-% ch_est_dd_ndft_raw(1:num.num_delay_guard+num.num_delay_pilot, 1:ceil(num.num_doppler_pilot/2)) = pilot_sym_upper*scale_ch_est_dd;
-% ch_est_dd_ndft_raw(1:num.num_delay_guard+num.num_delay_pilot, end-floor(num.num_doppler_pilot/2)+1:end) = pilot_sym_lower*scale_ch_est_dd;
+ch_est_dd_ndft_raw(1:num.num_pilot_delay-ch_est_buffer, 1:ceil(num.num_pilot_doppler/2)) = pilot_sym_upper(1:end-ch_est_buffer, :)*scale_ch_est_dd;
+ch_est_dd_ndft_raw(1:num.num_pilot_delay-ch_est_buffer, end-floor(num.num_pilot_doppler/2)+1:end) = pilot_sym_lower(1:end-ch_est_buffer, :)*scale_ch_est_dd;
+% ch_est_dd_ndft_raw(1:num.num_guard_delay+num.num_pilot_delay, 1:ceil(num.num_pilot_doppler/2)) = pilot_sym_upper*scale_ch_est_dd;
+% ch_est_dd_ndft_raw(1:num.num_guard_delay+num.num_pilot_delay, end-floor(num.num_pilot_doppler/2)+1:end) = pilot_sym_lower*scale_ch_est_dd;
 
 % output
 ch_est_dd_ndft = ch_est_dd_ndft_raw;

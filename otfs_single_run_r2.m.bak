@@ -221,10 +221,7 @@ for subfrm_idx = 1 : size(tx_sym_subfrm, 2)
         if strcmp(chest_option, 'real')
             % get real channel
             ch_est_tf_ndft = ch_tf_ndft_real;
-        elseif  strcmp(chest_option, 'perfect')
-            % estimate channel in tf-domain
-            ch_est_tf_ndft = otfs_ch_est_tf(tx_ofdm_sym_serial, tx_ofdm_sym_faded, num, chest_option);
-        elseif  strcmp(chest_option, 'tf_pilot')
+        elseif  strcmp(chest_option, 'perfect') || strcmp(chest_option, 'tf_pilot')
             % estimate channel in tf-domain
             ch_est_tf_ndft = otfs_ch_est_tf(tx_ofdm_sym_serial, rx_ofdm_sym_serial, num, chest_option);
         else

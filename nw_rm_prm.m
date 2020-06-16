@@ -23,16 +23,16 @@ P = bitrevorder(0 : nC - 1);    % subblock permutation pattern
 
 % rate matching output sequence length per coded block
 len_tb_sym_req = ceil(B / efficiency);                              % number of req. symbols
-num_ub_req = ceil(len_tb_sym_req / (num.len_rb_sym_user * cc.C));   % number of req. user blocks (1 user block per 1 cb)
-G = num_ub_req * (num.len_rb_sym_user * cc.C) * Qm;                 % number of tx bits required
+num_ub_req = ceil(len_tb_sym_req / (num.num_qamsym_usr * cc.C));    % number of req. user blocks (1 user block per 1 cb)
+G = num_ub_req * (num.num_qamsym_usr * cc.C) * Qm;                  % number of tx bits required
 G_ = G / (NL * Qm);                                                 % number of tx symbols per layer required
 gamma = mod(G_, cc.C);
 E = NL * Qm * [floor(G_ / cc.C) * ones(cc.C - gamma, 1); ceil(G_ / cc.C) * ones(gamma, 1)];
 
 % simulation setup
 num_data_sym_per_cw = E(1) / Qm;                            % number of symbol per codeword
-num_subframe = num_data_sym_per_cw / num.len_rb_sym_user;   % number of required subframes
-t_tb = num_subframe * num.t_subframe;                       % transfer block length (sec)
+num_subframe = num_data_sym_per_cw / num.num_qamsym_usr;    % number of required subframes
+t_tb = num_subframe * num.t_subfrm;                         % transfer block length (sec)
 
 % subblock interleaving table setup
 seq_nR = (0 : nR - 1)';

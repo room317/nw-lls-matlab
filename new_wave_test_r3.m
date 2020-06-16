@@ -79,9 +79,9 @@ while 1
             
             % simulate single packet
             if strcmp(waveform, 'ofdm')    % ofdm
-                pkt_error = ofdm_single_run_r1(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option);
+                pkt_error = ofdm_single_run_r2(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option, cheq_option);
             else                           % otfs
-                pkt_error = otfs_single_run_r2(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option, cheq_option);
+                pkt_error = otfs_single_run_r3(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option, cheq_option);
             end
             
             % count packet error
@@ -100,11 +100,13 @@ while 1
         % save simulation result
         fprintf('    SNR: %4.1f     NUM. PKTS: %7d   PER: %9.6f\n', nw_sim_result(snr_idx, :));
         fprintf(fp2, '%5.1f %10d %10.6f\n', nw_sim_result(snr_idx, :)');
+%         fprintf('    SNR: %4.1f     NUM. PKTS: %7d   PER: %9.6f   ERR: %9.6f\n', nw_sim_result(snr_idx, :), sqrt(total_qam_mse/sim_cnt));
         
-        if nw_sim_result(snr_idx, 3) < ErrorBreak
-            disp('BREAK');
-            break;
-        end
+%         % set stopping criteria
+%         if nw_sim_result(snr_idx, 3) < ErrorBreak
+%             disp('BREAK');
+%             break;
+%         end
     end
     
     % plot

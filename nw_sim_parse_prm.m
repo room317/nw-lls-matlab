@@ -40,9 +40,11 @@ prm_nsim_idx = find(contains(prm_set, 'SIM'), 1);
 prm_snr_idx = find(contains(prm_set, 'SNR'), 1);
 prm_chreal_idx = find(contains(prm_set, 'REAL'), 1);
 prm_chperfect_idx = find(contains(prm_set, 'PERFECT'), 1);
-prm_chtfpilot_idx = find(contains(prm_set, 'TFPILOT'), 1);
-prm_chddpilot_idx = find(contains(prm_set, 'DDPILOT'), 1);
-prm_tfeq_idx = find(contains(prm_set, 'TFEQ'), 1);
+prm_chddsingletone_idx = find(contains(prm_set, 'DDSINGLETONE'), 1);
+prm_chtfltedown_idx = find(contains(prm_set, 'TFLTEDOWN'), 1);
+prm_chtflteup_idx = find(contains(prm_set, 'TFLTEUP'), 1);
+prm_chtfnr_idx = find(contains(prm_set, 'TFNR'), 1);
+prm_tfeqzf_idx = find(contains(prm_set, 'TFEQZF'), 1);
 prm_tfeqmmse_idx = find(contains(prm_set, 'TFEQMMSE'), 1);
 prm_ddeq_idx = find(contains(prm_set, 'DDEQ'), 1);
 
@@ -169,23 +171,27 @@ else
 end
 
 % channel estimation
-if sum(double([isempty(prm_chreal_idx) isempty(prm_chperfect_idx) isempty(prm_chtfpilot_idx) isempty(prm_chddpilot_idx)])) ~= 3
-    error('Channel estimation setting: choose one of these: REAL, PERFECT, TFPILOT, DDPILOT.')
+if sum(double([isempty(prm_chreal_idx) isempty(prm_chperfect_idx) isempty(prm_chddsingletone_idx) isempty(prm_chtfltedown_idx) isempty(prm_chtflteup_idx) isempty(prm_chtfnr_idx)])) ~= 5
+    error('Channel estimation setting: choose one of these: REAL, PERFECT, DDSINGLETONE, TFLTEDOWN, TFLTEUP, TFNR.')
 elseif ~isempty(prm_chreal_idx)
-    prm_chest = 'real';     % channel from the fading block (interference exists)
+    prm_chest = 'real';             % channel from the fading block (interference exists)
 elseif ~isempty(prm_chperfect_idx)
-    prm_chest = 'perfect';  % channel from the whole received signals (interferece cancelled)
-elseif ~isempty(prm_chddpilot_idx)
-    prm_chest = 'dd_pilot'; % channel from dd-domain pilots
+    prm_chest = 'perfect';          % channel from the whole received signals (interferece cancelled)
+elseif ~isempty(prm_chddsingletone_idx)
+    prm_chest = 'dd_singletone';    % channel from dd-domain singletone
+elseif ~isempty(prm_chtfltedown_idx)
+    prm_chest = 'tf_ltedown';       % channel from tf-domain lte downlink pilots
+elseif ~isempty(prm_chtflteup_idx)
+    prm_chest = 'tf_lteup';         % channel from tf-domain lte uplink pilots
 else
-    prm_chest = 'tf_pilot'; % channel from tf-domain pilots
+    prm_chest = 'tf_nr';            % channel from tf-domain nr downlink pilots
 end
 
 % channel estimation
-if sum(double([isempty(prm_tfeq_idx) isempty(prm_tfeqmmse_idx) isempty(prm_ddeq_idx)])) ~= 2
+if sum(double([isempty(prm_tfeqzf_idx) isempty(prm_tfeqmmse_idx) isempty(prm_ddeq_idx)])) ~= 2
     error('Channel equalization setting: choose one of these: TFEQ, DDEQ.')
-elseif ~isempty(prm_tfeq_idx)
-    prm_cheq = 'tfeq';  % tf-domain equalization
+elseif ~isempty(prm_tfeqzf_idx)
+    prm_cheq = 'tfeq_zf';  % tf-domain equalization
 elseif ~isempty(prm_tfeqmmse_idx)
     prm_cheq = 'tfeq_mmse';  % tf-domain equalization
 else
