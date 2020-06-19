@@ -57,15 +57,22 @@ tx_bit = randi([0 1], sim.len_tb_bit, 1);
 % pad bits
 tx_bit_pad = [tx_bit; zeros(cc.F, 1)];
 
+% buffer per codeword
+tx_bit_buff = reshape(tx_bit_pad, (sim.len_tb_bit+cc.F)/cc.C, cc.C);
+
 % generate crc
 tx_crc = crc.generator(cc.gCRC24A);
-tx_bit_crc = generate(tx_crc, tx_bit_pad);
+tx_bit_crc = generate(tx_crc, tx_bit_buff);
 
-% turbo encode data
-tx_bit_enc = turbo_enc(tx_bit_crc);
+% turbo encode data per channel
+tx_bit_enc = zeros(rm.D*3, cc.C);
+for idx_cw = 1 : cc.C
+    tx_bit_enc(:, idx_cw) = turbo_enc(tx_bit_crc(:, idx_cw));
+end
 
 % rate match
-tx_bit_ratematch = tx_ratematch(tx_bit_enc, rm);
+% tx_bit_ratematch = tx_ratematch(tx_bit_enc, rm);
+tx_bit_ratematch = tx_ratematch_r2(tx_bit_enc, rm);
 
 % modulate bit stream (only for 16qam)
 tx_sym_serial = qammod(tx_bit_ratematch, 2^rm.Qm, 'InputType', 'bit', 'UnitAveragePower', true);
@@ -160,23 +167,38 @@ end
 rx_bit_demod = (-1) * qamdemod(rx_sym(:), 2^rm.Qm, 'UnitAveragePower', true, ...
     'OutputType', 'approxllr', 'NoiseVariance', error_var);
 
+% buffer per codeword
+rx_bit_buff = reshape(rx_bit_demod, [], cc.C);  % rm.E*cc.C
+
 % rate match
-rx_bit_ratematch = rx_ratematch(rx_bit_demod, rm);
+% rx_bit_ratematch = rx_ratematch(rx_bit_demod, rm);
+rx_bit_ratematch = rx_ratematch_r2(rx_bit_buff, rm);
 
 % turbo decode data
-rx_bit_dec = turbo_dec(rx_bit_ratematch);
+rx_bit_dec = zeros(cc.K, cc.C);
+for idx_cw = 1 : cc.C
+    rx_bit_dec(:, idx_cw) = turbo_dec(rx_bit_ratematch(:, idx_cw));
+end
 
 % detect crc
 rx_crc = crc.detector(cc.gCRC24A);
-[rx_bit_pad, rx_crc_error] = detect(rx_crc, rx_bit_dec);
+[rx_bit_crc_removed, rx_crc_error] = detect(rx_crc, rx_bit_dec);
+
+% assignin('base', 'rx_bit_dec', rx_bit_dec);
+% assignin('base', 'rx_bit_pad', rx_bit_pad);
+% assignin('base', 'rx_crc_error', rx_crc_error);
+% pause
+
+% serialize bits
+rx_bit_pad = rx_bit_crc_removed(:);
 
 % remove padded bits
 rx_bit = rx_bit_pad(1 : sim.len_tb_bit);
 
-if rx_crc_error
-    pkt_error = true;
-else
+if ~rx_crc_error
     pkt_error = symerr(tx_bit, rx_bit) > 0;
+else
+    pkt_error = true;
 end
 
 % fprintf('original noise variance: %10.4f    new noise variance: %10.4f\n', noise_var, qam_mse)
