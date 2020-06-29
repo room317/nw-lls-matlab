@@ -40,7 +40,7 @@ prm_nsim_idx = find(contains(prm_set, 'SIM'), 1);
 prm_snr_idx = find(contains(prm_set, 'SNR'), 1);
 prm_chreal_idx = find(contains(prm_set, 'REAL'), 1);
 prm_chperfect_idx = find(contains(prm_set, 'PERFECT'), 1);
-prm_chddsingletone_idx = find(contains(prm_set, 'DDSINGLETONE'), 1);
+prm_chddtone_idx = find(contains(prm_set, 'DDTONE'), 1);
 prm_chtfltedown_idx = find(contains(prm_set, 'TFLTEDOWN'), 1);
 prm_chtflteup_idx = find(contains(prm_set, 'TFLTEUP'), 1);
 prm_chtfnr_idx = find(contains(prm_set, 'TFNR'), 1);
@@ -171,14 +171,14 @@ else
 end
 
 % channel estimation
-if sum(double([isempty(prm_chreal_idx) isempty(prm_chperfect_idx) isempty(prm_chddsingletone_idx) isempty(prm_chtfltedown_idx) isempty(prm_chtflteup_idx) isempty(prm_chtfnr_idx)])) ~= 5
-    error('Channel estimation setting: choose one of these: REAL, PERFECT, DDSINGLETONE, TFLTEDOWN, TFLTEUP, TFNR.')
+if sum(double([isempty(prm_chreal_idx) isempty(prm_chperfect_idx) isempty(prm_chddtone_idx) isempty(prm_chtfltedown_idx) isempty(prm_chtflteup_idx) isempty(prm_chtfnr_idx)])) ~= 5
+    error('Channel estimation setting: choose one of these: REAL, PERFECT, DDTONE, TFLTEDOWN, TFLTEUP, TFNR.')
 elseif ~isempty(prm_chreal_idx)
     prm_chest = 'real';             % channel from the fading block (interference exists)
 elseif ~isempty(prm_chperfect_idx)
     prm_chest = 'perfect';          % channel from the whole received signals (interferece cancelled)
-elseif ~isempty(prm_chddsingletone_idx)
-    prm_chest = 'dd_singletone';    % channel from dd-domain singletone
+elseif ~isempty(prm_chddtone_idx)
+    prm_chest = 'dd_tone';    % channel from dd-domain singletone
 elseif ~isempty(prm_chtfltedown_idx)
     prm_chest = 'tf_ltedown';       % channel from tf-domain lte downlink pilots
 elseif ~isempty(prm_chtflteup_idx)

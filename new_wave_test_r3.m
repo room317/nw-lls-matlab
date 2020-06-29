@@ -30,7 +30,6 @@ fp1 = fopen(list_file, 'r');
 fp2 = fopen(result_file, 'a');
 
 % start simulation
-nw_sim_result = zeros(SNRCnt, 3);
 while 1
     % read file
     file_read = fgets(fp1);
@@ -59,13 +58,15 @@ while 1
     waveform = nw_parse_prm.wave;
     
     % set equalization option
-    nw_num = nw_num_prm(idx_bandwidth, chest_option);
+    nw_num = nw_num_prm(idx_bandwidth, waveform, chest_option);
     nw_cc = nw_cc_prm(len_tb_bit);
     nw_rm = nw_rm_prm(len_tb_bit, mcs, nw_num, nw_cc);
     nw_sim = nw_sim_prm(len_tb_bit, num_sim, nw_num, nw_cc, nw_rm);
+    map_plan = 3;
     
     fprintf('RUNNING CASE: %s', file_read);
     
+    nw_sim_result = zeros(SNRCnt, 3);
     for snr_idx = 1 : SNRCnt
         snr_db = snr_db_start + SNRStep * (snr_idx - 1);
         nw_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, snr_db, delay_spread_rms_us);
@@ -81,7 +82,7 @@ while 1
             if strcmp(waveform, 'ofdm')    % ofdm
                 pkt_error = ofdm_single_run_r2(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option, cheq_option);
             else                           % otfs
-                pkt_error = otfs_single_run_r3(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option, cheq_option);
+                pkt_error = otfs_single_run_r4(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option, cheq_option, map_plan);
             end
             
             % count packet error
@@ -102,11 +103,11 @@ while 1
         fprintf(fp2, '%5.1f %10d %10.6f\n', nw_sim_result(snr_idx, :)');
 %         fprintf('    SNR: %4.1f     NUM. PKTS: %7d   PER: %9.6f   ERR: %9.6f\n', nw_sim_result(snr_idx, :), sqrt(total_qam_mse/sim_cnt));
         
-%         % set stopping criteria
-%         if nw_sim_result(snr_idx, 3) < ErrorBreak
-%             disp('BREAK');
-%             break;
-%         end
+        % set stopping criteria
+        if nw_sim_result(snr_idx, 3) < ErrorBreak
+            disp('BREAK');
+            break;
+        end
     end
     
     % plot

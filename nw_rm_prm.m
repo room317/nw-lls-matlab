@@ -31,8 +31,8 @@ E = NL * Qm * [floor(G_ / cc.C) * ones(cc.C - gamma, 1); ceil(G_ / cc.C) * ones(
 
 % simulation setup
 num_data_sym_per_cw = E(1) / Qm;                            % number of symbol per codeword
-num_subframe = num_data_sym_per_cw / num.num_qamsym_usr;    % number of required subframes
-t_tb = num_subframe * num.t_subfrm;                         % transfer block length (sec)
+num_subfrm = num_data_sym_per_cw / num.num_qamsym_usr;      % number of required subframes
+t_tb = num_subfrm * num.t_subfrm;                           % transfer block length (sec)
 
 % subblock interleaving table setup
 seq_nR = (0 : nR - 1)';
@@ -45,13 +45,9 @@ t2 = [ones(nDummy, 1); zeros(D, 1)];
 t3 = [ones(nDummy, 1); zeros(D, 1)];
 
 % puncturing table subblock interleaving
-Z1 = reshape(t1, nC, [])';
-Z2 = Z1(:, P + 1);
-s1 = Z2(:);
-Z1 = reshape(t2, nC, [])';
-Z2 = Z1(:, P + 1);
-s2 = Z2(:);
-s3 = t3(subblk_int_tbl + 1);
+s1 = t1(subblk_int_tbl + 1, :);
+s2 = t2(subblk_int_tbl + 1, :);
+s3 = t3(subblk_int_tbl + 1, :);
 s23 = [s2 s3]';
 punc_tbl = [s1; s23(:)];
 

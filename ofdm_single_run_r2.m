@@ -74,8 +74,8 @@ end
 % tx_bit_ratematch = tx_ratematch(tx_bit_enc, rm);
 tx_bit_ratematch = tx_ratematch_r2(tx_bit_enc, rm);
 
-% modulate bit stream (only for 16qam)
-tx_sym_serial = qammod(tx_bit_ratematch, 2^rm.Qm, 'InputType', 'bit', 'UnitAveragePower', true);
+% modulate bit stream
+tx_sym_serial = qammod(tx_bit_ratematch(:), 2^rm.Qm, 'InputType', 'bit', 'UnitAveragePower', true);
 
 % simulate per subframe
 tx_sym = reshape(tx_sym_serial, num.num_qamsym_usr, []);
@@ -88,12 +88,13 @@ for idx_subfrm = 1 : size(tx_sym, 2)
     % map qam symbols to user physical resource blocks
     tx_sym_rbs = ofdm_sym_map(tx_sym_data_subfrm, num);
     
-    % map user resource blocks to whole bandwidth
-    tx_sym_bw = tx_sym_rbs;
+    % map user resource blocks to whole bandwidth (temporary)
+    tx_sym_bw = zeros(num.num_subc_bw, num.num_ofdmsym_subfrm);
+    tx_sym_bw(1:size(tx_sym_rbs, 1), 1:size(tx_sym_rbs, 2)) = tx_sym_rbs;
     
     % map bandwidth to the center of fft range
     tx_sym_nfft_shift = zeros(num.nfft, num.num_ofdmsym_subfrm);
-    tx_sym_nfft_shift((num.nfft/2)-(num.num_subc_usr/2)+1:(num.nfft/2)+(num.num_subc_usr/2), :) = tx_sym_bw;
+    tx_sym_nfft_shift((num.nfft/2)-(num.num_subc_bw/2)+1:(num.nfft/2)+(num.num_subc_bw/2), :) = tx_sym_bw;
     tx_sym_nfft = fftshift(tx_sym_nfft_shift, 1);
     
     % ofdm modulate
@@ -110,7 +111,7 @@ for idx_subfrm = 1 : size(tx_sym, 2)
     
     % add gaussian noise
     rx_ofdmsym_serial = awgn(tx_ofdmsym_faded, snr_db, 'measured');
-    % rx_ofdm_sym_serial = awgn(tx_ofdm_sym_serial, snr_db, 'measured');
+%     rx_ofdmsym_serial = awgn(tx_ofdmsym_serial, snr_db, 'measured');
     
     % reshape
     rx_ofdmsym_cp = reshape(rx_ofdmsym_serial, num.nfft+num.num_cp, num.num_ofdmsym_subfrm);
@@ -123,19 +124,20 @@ for idx_subfrm = 1 : size(tx_sym, 2)
     
     % demap symbols in bandwidth from fft range
     rx_sym_nfft_shift = fftshift(rx_sym_nfft, 1);
-    rx_sym_bw = rx_sym_nfft_shift(num.nfft/2-num.num_subc_usr/2+1:num.nfft/2+num.num_subc_usr/2, :);
+    rx_sym_bw = rx_sym_nfft_shift((num.nfft/2)-(num.num_subc_bw/2)+1:(num.nfft/2)+(num.num_subc_bw/2), :);
     
-    % demap user resource block from whole bandwidth
-    rx_sym_rbs = rx_sym_bw;
+    % demap user resource block from whole bandwidth (temporary)
+    rx_sym_rbs = rx_sym_bw(1:num.num_subc_usr, 1:num.num_ofdmsym_usr);
     
     % estimate channel (for uplink: channel estimation and equalization after demapping user physical resource block)
     ch_est_rbs = ofdm_ch_est(tx_sym_rbs, rx_sym_rbs, tx_ofdmsym_faded, num, chest_option, fading_ch, ch_path_gain);
     
     % equalize channel in tf-domain
-    rx_sym_rbs_eq = otfs_ch_eq_tf(rx_sym_rbs, ch_est_rbs, noise_var, cheq_option);
+    rx_sym_rbs_eq = ofdm_ch_eq(rx_sym_rbs, ch_est_rbs, noise_var, cheq_option);
     
     % demap data qam symbols
     rx_sym_data_subfrm = ofdm_sym_demap(rx_sym_rbs_eq, num);
+%     rx_sym_data_subfrm = ofdm_sym_demap(rx_sym_rbs, num);
     
     % buffer qam symbols
     rx_sym(:, idx_subfrm) = rx_sym_data_subfrm;
@@ -151,6 +153,9 @@ for idx_subfrm = 1 : size(tx_sym, 2)
 
 end
 
+% serialize qam symbols
+rx_sym_serial = rx_sym(:);
+
 % compensate channel estimation error variance
 % qam_mse = mean(abs(tx_sym(:)-rx_sym(:)).^2);
 if strcmp(chest_option, 'tf_ltedown') || strcmp(chest_option, 'tf_nr')
@@ -164,7 +169,7 @@ else
 end
 
 % demap the qam symbols
-rx_bit_demod = (-1) * qamdemod(rx_sym(:), 2^rm.Qm, 'UnitAveragePower', true, ...
+rx_bit_demod = (-1) * qamdemod(rx_sym_serial, 2^rm.Qm, 'UnitAveragePower', true, ...
     'OutputType', 'approxllr', 'NoiseVariance', error_var);
 
 % buffer per codeword
@@ -184,17 +189,13 @@ end
 rx_crc = crc.detector(cc.gCRC24A);
 [rx_bit_crc_removed, rx_crc_error] = detect(rx_crc, rx_bit_dec);
 
-% assignin('base', 'rx_bit_dec', rx_bit_dec);
-% assignin('base', 'rx_bit_pad', rx_bit_pad);
-% assignin('base', 'rx_crc_error', rx_crc_error);
-% pause
-
 % serialize bits
 rx_bit_pad = rx_bit_crc_removed(:);
 
 % remove padded bits
 rx_bit = rx_bit_pad(1 : sim.len_tb_bit);
 
+% calculate packet error
 if ~rx_crc_error
     pkt_error = symerr(tx_bit, rx_bit) > 0;
 else

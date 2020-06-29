@@ -9,13 +9,9 @@ x2 = [zeros(rm.nDummy, num_cb); u(2 : 3 : end, :)];
 x3 = [zeros(rm.nDummy, num_cb); u(3 : 3 : end, :)];
 
 % subblock interleaving
-Z11 = reshape(x1, rm.nC, [], num_cb);
-Z12 = permute(Z11(rm.P + 1, :, :), [2 1 3]);
-y1 = reshape(Z12, [], 1, num_cb);
-Z21 = reshape(x2, rm.nC, [], num_cb);
-Z22 = permute(Z21(rm.P + 1, :, :), [2 1 3]);
-y2 = reshape(Z22, [], 1, num_cb);
-y3 = reshape(x3(rm.subblk_int_tbl + 1, :), [], 1, num_cb);
+y1 = x1(rm.subblk_int_tbl+1, :);
+y2 = x2(rm.subblk_int_tbl+1, :);
+y3 = x3(rm.subblk_int_tbl+1, :);
 y23 = permute([y2 y3], [2 1 3]);
 
 % bit Collection and selection

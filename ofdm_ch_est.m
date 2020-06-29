@@ -86,13 +86,13 @@ elseif strcmp(chest_option, 'real')
     end
     ch_real_mat_shift_tf = fftshift(fftshift(ch_real_halfmap_mat_tf, 2), 1);
     ch_real_mat_tf = ...
-        ch_real_mat_shift_tf((num.nfft/2)-(num.num_subc_usr/2)+1:(num.nfft/2)+(num.num_subc_usr/2), ...
-        (num.nfft/2)-(num.num_subc_usr/2)+1:(num.nfft/2)+(num.num_subc_usr/2), :);
+        ch_real_mat_shift_tf((num.nfft/2)-(num.num_subc_bw/2)+1:(num.nfft/2)+(num.num_subc_bw/2), ...
+        (num.nfft/2)-(num.num_subc_bw/2)+1:(num.nfft/2)+(num.num_subc_bw/2), :);
     
     % extract diagonal elements of real channel
     ch_real_rbs = zeros(num.num_subc_usr, num.num_ofdmsym_usr);
     for idx_ch_sym = 1:num.num_ofdmsym_usr
-        ch_real_rbs(:, idx_ch_sym) = diag(ch_real_mat_tf(:, :, idx_ch_sym));  % diagonal term only
+        ch_real_rbs(:, idx_ch_sym) = diag(ch_real_mat_tf(1:num.num_subc_usr, 1:num.num_subc_usr, idx_ch_sym));  % diagonal term only
     end
     
 %     figure
@@ -119,8 +119,8 @@ elseif strcmp(chest_option, 'perfect')
     ch_out_ofdmsym = reshape(ch_out_time_serial, num.nfft+num.num_cp, num.num_ofdmsym_subfrm);
     ch_out_sym_nfft = (1/sqrt(num.nfft)) * fft(ch_out_ofdmsym(num.num_cp+1:end, :), [], 1);
     ch_out_sym_nfft_shift = fftshift(ch_out_sym_nfft, 1);
-    ch_out_sym_bw = ch_out_sym_nfft_shift(num.nfft/2-num.num_subc_usr/2+1:num.nfft/2+num.num_subc_usr/2, :);
-    ch_out_sym_rbs = ch_out_sym_bw;
+    ch_out_sym_bw = ch_out_sym_nfft_shift(num.nfft/2-num.num_subc_bw/2+1:num.nfft/2+num.num_subc_bw/2, :);
+    ch_out_sym_rbs = ch_out_sym_bw(1:num.num_subc_usr, 1:num.num_ofdmsym_usr);      % temporary
     
     % estimate channels
     ch_est_rbs_zf = ch_out_sym_rbs ./ ch_in_sym_rbs;  % estimate channel
