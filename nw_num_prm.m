@@ -76,8 +76,6 @@ if strcmp(waveform, 'ofdm')    % ofdm
     num_delay_guard_usr = [];
     num_doppler_data_usr = [];
     num_delay_data_usr = [];
-    num_doppler_buff = [];
-    num_delay_buff = [];
 else
     
     % user parameters for otfs
@@ -87,27 +85,23 @@ else
     % set number of data symbols per user
     if strcmp(chest_option, 'dd_tone')     % tf-domain pilots (some symbols for pilots)
         % otfs pilot setup
-        %   - num. otfs pilot(+guard) qam symbols = num. ofdm pilot qam symbols
+        %   - num. otfs pilot(including guard) qam symbols = num. ofdm pilot qam symbols
         %   ex) 600*2 and 86*14
-        num_doppler_pilot_usr = 7;                      % number of doppler grids with pilots (set even number)
-        num_delay_pilot_usr = 43;                       % number of delay grids with pilots (set even number)
-        num_doppler_guard_usr = num_doppler_pilot_usr;  % number of doppler grids for guard (set even number)
-        num_delay_guard_usr = num_delay_pilot_usr;      % number of delay grids for guard (set even number)
-        num_doppler_buff = 0;
-        num_delay_buff = 10;
+        num_doppler_pilot_usr = 14;                     % number of doppler grids with pilots
+        num_delay_pilot_usr = 86;                       % number of delay grids with pilots
+        num_doppler_guard_usr = 0;                      % number of doppler grids for guard (set 0 for full-span pilot)
+        num_delay_guard_usr = 10;                       % number of delay grids for guard (set even number)
     else
         num_doppler_pilot_usr = 0;
         num_delay_pilot_usr = 0;
         num_doppler_guard_usr = 0;
         num_delay_guard_usr = 0;
-        num_doppler_buff = 0;
-        num_delay_buff = 0;
     end
-    num_doppler_data_usr = num_doppler_usr-(num_doppler_pilot_usr+num_doppler_guard_usr);   % number of doppler grids without pilot and guard (set even number)
-    num_delay_data_usr = num_delay_usr-(num_delay_pilot_usr+num_delay_guard_usr);           % number of delay grids without pilot and guard (set even number)
+    num_doppler_data_usr = num_doppler_usr-num_doppler_pilot_usr;   % number of doppler grids without pilot and guard (set even number)
+    num_delay_data_usr = num_delay_usr-num_delay_pilot_usr;         % number of delay grids without pilot and guard (set even number)
     
     % calculate number of data qam symbols per user
-    num_qamsym_usr = (num_delay_usr*num_doppler_usr)-((num_delay_pilot_usr+num_delay_guard_usr)*(num_doppler_pilot_usr+num_doppler_guard_usr));
+    num_qamsym_usr = (num_delay_usr*num_doppler_usr)-(num_delay_pilot_usr*num_doppler_pilot_usr);
     
     % set unused parameters
     idx_ofdmsym_pilot_usr = [];
@@ -171,7 +165,5 @@ nw_num.num_doppler_guard_usr = num_doppler_guard_usr;
 nw_num.num_delay_guard_usr = num_delay_guard_usr;
 nw_num.num_doppler_data_usr = num_doppler_data_usr;
 nw_num.num_delay_data_usr = num_delay_data_usr;
-nw_num.num_doppler_buff = num_doppler_buff;
-nw_num.num_delay_buff = num_delay_buff;
 
 end

@@ -9,10 +9,13 @@
 % modified:
 %   - 2020.03.28:
 %   - 2020.04.29:
+%   - 2020.06.30: walsh_hadamard spreading (not working as intended)
+%   - 2020.06.30: papr calculation
+%   - 2020.06.30: symbol scrambling (not working as intended)
 % memo
 %   - https://kr.mathworks.com/help/comm/ref/comm.rayleighchannel-system-object.html#d120e191883
 
-function ch_est_rmse = test_dd_basic_r1(test_synch, test_tone, test_scope, test_seed, test_timesaving)
+function [ch_rmse, papr_db] = test_dd_basic_r2(test_synch, test_tone, test_scope, test_seed, test_timesaving)
 
 % set parameter
 num_ofdm_subc = 1024;
@@ -83,6 +86,9 @@ else
     tx_sym_dd(test_tone(1)+1, test_tone(2)+1) = sqrt(num_subc*num_sym);
 end
 
+% % scramble data
+% tx_sym_dd(:, test_tone(2)+1) = lfsr_soft(tx_sym_dd(:, test_tone(2)+1), [1 1 1 1 1 1 1]);
+
 % tx_sym_dd = zeros(num_subc, num_sym);
 % tx_sym_dd(tx_pilot_position(1)+1, tx_pilot_position(2)+1) = sqrt(num_subc*num_sym);
 
@@ -98,8 +104,12 @@ tx_sym_map_tf = fftshift(tx_sym_map_shift_tf, 1);
 % ofdm modulate
 tx_ofdm_sym = sqrt(num_ofdm_subc) * ifft(tx_sym_map_tf, [], 1);
 
+% spread with walsh-hadamard
+% tx_ofdm_sym_wh = fwht(tx_ofdm_sym);
+tx_ofdm_sym_wh = tx_ofdm_sym;
+
 % add cp (cyclic prefix)
-tx_ofdm_sym_cp = [tx_ofdm_sym(end-len_cp+1:end, :); tx_ofdm_sym];
+tx_ofdm_sym_cp = [tx_ofdm_sym_wh(end-len_cp+1:end, :); tx_ofdm_sym_wh];
 
 % serialize
 tx_sig = tx_ofdm_sym_cp(:);
@@ -194,8 +204,12 @@ rx_ofdm_sym_cp = reshape(rx_sig_synch, num_ofdm_subc+len_cp, []);
 % remove cp (with synch: to observe impact of time shift)
 rx_ofdm_sym = rx_ofdm_sym_cp(1:num_ofdm_subc, :);
 
+% despread with walsh-hadamard
+% rx_ofdm_sym_wh = ifwht(rx_ofdm_sym);
+rx_ofdm_sym_wh = rx_ofdm_sym;
+
 % ofdm demodulate the symbol
-rx_sym_map_tf = (1/sqrt(num_ofdm_subc)) * fft(rx_ofdm_sym, [], 1);
+rx_sym_map_tf = (1/sqrt(num_ofdm_subc)) * fft(rx_ofdm_sym_wh, [], 1);
 
 % demap
 rx_sym_map_shift_tf = fftshift(rx_sym_map_tf, 1);
@@ -204,7 +218,12 @@ rx_sym_tf = rx_sym_map_shift_tf(idx_ofdm_map(1)+1:idx_ofdm_map(1)+num_subc, idx_
 % 2d inverse sfft
 rx_sym_dd = sqrt(num_subc/num_sym) * fft(ifft(rx_sym_tf, [], 1), [], 2);
 
-% output
+% descramble data
+for idx = 1 : num_sym
+    rx_sym_dd(:, idx) = lfsr_soft(rx_sym_dd(:, idx), [1 1 1 1 1 1 1]);
+end
+
+% output: channel estimation error
 if isempty(test_tone)
     ch_est_tf_perfect = rx_sym_tf ./ tx_sym_tf;     % tf domain
     ch_est_tf = ch_est_tf_perfect;
@@ -212,12 +231,15 @@ else
     ch_est_dd = circshift(rx_sym_dd, (-1)*test_tone);
     ch_est_tf = sqrt(num_sym/num_subc) * fft(ifft(ch_est_dd, [], 2), [], 1);
 end
-ce_est_mse = zeros(1, num_sym);
+ch_mse = zeros(1, num_sym);
 for idx_ce_sym = 1:num_sym
 %     ce_est_mse(idx_ce_sym) = mean(abs(ch_real_mat_tf(:, :, idx_ce_sym)-diag(ch_est_tf(:, idx_ce_sym))).^2, 'all');  % off-diagonal term included
-    ce_est_mse(idx_ce_sym) = mean(abs(diag(ch_real_mat_tf(:, :, idx_ce_sym))-ch_est_tf(:, idx_ce_sym)).^2, 'all');  % diagonal term only
+    ch_mse(idx_ce_sym) = mean(abs(diag(ch_real_mat_tf(:, :, idx_ce_sym))-ch_est_tf(:, idx_ce_sym)).^2, 'all');  % diagonal term only
 end
-ch_est_rmse = sqrt(mean(ce_est_mse));
+ch_rmse = sqrt(mean(ch_mse));
+
+% output: papr
+papr_db = 10*log10(mean(max(abs(tx_ofdm_sym_cp).^2, [], 1)./mean(abs(tx_ofdm_sym_cp).^2, 1)));
 
 if test_scope
     % reproduce channel output
@@ -275,6 +297,21 @@ if test_scope
     figure
     subplot(2, 1, 1), plot(real(rx_sym_tf(:)), '-b.'), hold on, plot(real(test_rx_sym_tf_est(:)), ':r.'), hold off, grid minor
     subplot(2, 1, 2), plot(imag(rx_sym_tf(:)), '-b.'), hold on, plot(imag(test_rx_sym_tf_est(:)), ':r.'), hold off, grid minor
+    pause
+    
+    % compare tx and rx signals
+    ch_real_tf = zeros(num_subc, num_sym);
+    for idx_ce_sym = 1:num_sym
+        ch_real_tf(:, idx_ce_sym) = diag(ch_real_mat_tf(:, :, idx_ce_sym));  % diagonal term only
+    end
+    ch_real_dd = circshift(sqrt(num_subc/num_sym) * fft(ifft(ch_real_tf, [], 1), [], 2), test_tone);
+    figure
+    subplot(2, 3, 1), mesh(1:size(tx_sym_dd, 2), 1:size(tx_sym_dd, 1), real(tx_sym_dd))
+    subplot(2, 3, 4), mesh(1:size(tx_sym_dd, 2), 1:size(tx_sym_dd, 1), imag(tx_sym_dd))
+    subplot(2, 3, 2), mesh(1:size(rx_sym_dd, 2), 1:size(rx_sym_dd, 1), real(rx_sym_dd))
+    subplot(2, 3, 5), mesh(1:size(rx_sym_dd, 2), 1:size(rx_sym_dd, 1), imag(rx_sym_dd))
+    subplot(2, 3, 3), mesh(1:size(ch_real_dd, 2), 1:size(ch_real_dd, 1), real(ch_real_dd))
+    subplot(2, 3, 6), mesh(1:size(ch_real_dd, 2), 1:size(ch_real_dd, 1), imag(ch_real_dd))
     pause
     
     % check channel estimation

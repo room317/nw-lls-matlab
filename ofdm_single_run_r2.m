@@ -11,7 +11,7 @@
 % - subframe buffer fixed: 2019.12.10
 % - real channel estimation with single tone pilot added: 2020.02.09
 
-function pkt_error = ofdm_single_run_r2(sim, cc, rm, num, snr_db, ch, chest_option, cheq_option)
+function [pkt_error, tx_papr, ch_mse] = ofdm_single_run_r2(sim, cc, rm, num, snr_db, ch, chest_option, cheq_option, test_option)
 
 % create turbo encoder/decoder
 turbo_enc = comm.TurboEncoder('TrellisStructure', cc.tc_trellis, ...
@@ -80,6 +80,8 @@ tx_sym_serial = qammod(tx_bit_ratematch(:), 2^rm.Qm, 'InputType', 'bit', 'UnitAv
 % simulate per subframe
 tx_sym = reshape(tx_sym_serial, num.num_qamsym_usr, []);
 rx_sym = zeros(size(tx_sym));
+tx_papr_subfrm = zeros(1, size(tx_sym, 2));     % for test: papr
+ch_mse_subfrm = zeros(1, size(tx_sym, 2));      % for test: channel mse
 for idx_subfrm = 1 : size(tx_sym, 2)
     
     % extract subframe data per user
@@ -102,6 +104,11 @@ for idx_subfrm = 1 : size(tx_sym, 2)
     
     % add cp
     tx_ofdmsym_cp = tx_ofdmsym([num.nfft-num.num_cp+1:num.nfft 1:num.nfft], :);
+    
+    % test: calculate papr
+    if test_option.papr
+        tx_papr_subfrm(1, idx_subfrm) = mean(max(abs(tx_ofdmsym_cp).^2, [], 1)./mean(abs(tx_ofdmsym_cp).^2, 1));
+    end
     
     % serialize
     tx_ofdmsym_serial = tx_ofdmsym_cp(:);
@@ -131,6 +138,12 @@ for idx_subfrm = 1 : size(tx_sym, 2)
     
     % estimate channel (for uplink: channel estimation and equalization after demapping user physical resource block)
     ch_est_rbs = ofdm_ch_est(tx_sym_rbs, rx_sym_rbs, tx_ofdmsym_faded, num, chest_option, fading_ch, ch_path_gain);
+    
+    % test: calculate channel estimation error
+    if test_option.ch_mse
+        ch_real_rbs = ofdm_ch_est(tx_sym_rbs, rx_sym_rbs, tx_ofdmsym_faded, num, 'real', fading_ch, ch_path_gain);
+        ch_mse_subfrm(1, idx_subfrm) = mean(abs(ch_real_rbs-ch_est_rbs).^2, 'all');
+    end
     
     % equalize channel in tf-domain
     rx_sym_rbs_eq = ofdm_ch_eq(rx_sym_rbs, ch_est_rbs, noise_var, cheq_option);
@@ -200,6 +213,20 @@ if ~rx_crc_error
     pkt_error = symerr(tx_bit, rx_bit) > 0;
 else
     pkt_error = true;
+end
+
+% calculate papr
+if test_option.papr
+    tx_papr = mean(tx_papr_subfrm);
+else
+    tx_papr = [];
+end
+
+% calculate channel mse
+if test_option.ch_mse
+    ch_mse = mean(ch_mse_subfrm);
+else
+    ch_mse = [];
 end
 
 % fprintf('original noise variance: %10.4f    new noise variance: %10.4f\n', noise_var, qam_mse)

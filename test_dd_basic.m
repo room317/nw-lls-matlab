@@ -152,6 +152,10 @@ ch_est_dd_imp_resp_nocirc = rx_sym_dd;    % dd domain
 % ch_est_dd_imp_resp = ch_est_dd_imp_resp_circ2d;
 ch_est_dd_imp_resp = circshift(ch_est_dd_imp_resp_nocirc, (-1)*tx_pilot_position);
 
+assignin('base', 'ch_est_t_imp_resp', ch_est_t_imp_resp);   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TEST
+assignin('base', 'tx_ofdm_sym_cp', tx_ofdm_sym_cp);   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TEST
+assignin('base', 'tx_sig_faded', tx_sig_faded);   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TEST
+
 if test_scope
     % (1) test t channel
     test_rx_sig_t_est = zeros(num_ofdm_subc+len_cp,num_ofdm_sym);

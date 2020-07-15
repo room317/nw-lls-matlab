@@ -18,7 +18,7 @@
 % - real channel compensation in dd domain added: 2020.02.19
 % - variable name changed: 2020.06.09
 
-function pkt_error = otfs_single_run_r4(sim, cc, rm, num, snr_db, ch, chest_option, cheq_option, map_plan)
+function [pkt_error, tx_papr, ch_mse, sym_err_var] = otfs_single_run_r4(sim, cc, rm, num, snr_db, ch, chest_option, cheq_option, test_option)
 
 % create turbo encoder/decoder
 turbo_enc = comm.TurboEncoder('TrellisStructure', cc.tc_trellis, ...
@@ -88,13 +88,19 @@ tx_sym_serial = qammod(tx_bit_ratematch(:), 2^rm.Qm, 'InputType', 'bit', 'UnitAv
 % simulate per subframe
 tx_sym = reshape(tx_sym_serial, num.num_qamsym_usr, []);
 rx_sym = zeros(size(tx_sym));
+tx_papr_subfrm = zeros(1, size(tx_sym, 2));     % for test: papr
+ch_mse_subfrm = zeros(1, size(tx_sym, 2));      % for test: channel mse
 for idx_subfrm = 1 : size(tx_sym, 2)
     
     % extract subframe data per user
     tx_sym_data_subfrm = tx_sym(:, idx_subfrm);
     
     % map data and pilot symbols
-    tx_sym_rbs_dd = otfs_sym_map_r2(tx_sym_data_subfrm, num, map_plan);
+    tx_sym_rbs_dd = otfs_sym_map_r2(tx_sym_data_subfrm, num, test_option);
+    
+%     assignin('base', 'tx_sym_data_subfrm', tx_sym_data_subfrm)
+%     assignin('base', 'tx_sym_rbs_dd', tx_sym_rbs_dd)
+%     pause
     
     % 2d sfft (otfs transform, from delay-doppler domain to freq-time domain)
     tx_sym_rbs_tf = sqrt(num.num_ofdmsym_usr/num.num_subc_usr)*fft(ifft(tx_sym_rbs_dd, [], 2), [], 1);
@@ -111,11 +117,52 @@ for idx_subfrm = 1 : size(tx_sym, 2)
     % ofdm modulate
     tx_ofdmsym = sqrt(num.nfft) * ifft(tx_sym_nfft, [], 1);
     
+%     % test: walsh-hadamard
+% %     % generate walsh-hadamard sequence
+% %     spread_seq = 1;
+% %     for idx = 1 : log2(16)
+% %         spread_seq_update = kron([1 1; 1 -1], spread_seq);
+% %         spread_seq = spread_seq_update;
+% %     end
+% 
+%     tx_ofdmsym_wh = fwht(tx_ofdmsym);
+%     
+%     figure
+%     subplot(2, 2, 1), mesh(1:size(tx_ofdmsym, 2), 1:size(tx_ofdmsym, 1), real(tx_ofdmsym)), axis_x = axis;
+%     subplot(2, 2, 2), mesh(1:size(tx_ofdmsym, 2), 1:size(tx_ofdmsym, 1), imag(tx_ofdmsym)), axis_y = axis;
+%     subplot(2, 2, 3), mesh(1:size(tx_ofdmsym_wh, 2), 1:size(tx_ofdmsym_wh, 1), real(tx_ofdmsym_wh)), axis(axis_x)
+%     subplot(2, 2, 4), mesh(1:size(tx_ofdmsym_wh, 2), 1:size(tx_ofdmsym_wh, 1), imag(tx_ofdmsym_wh)), axis(axis_y)
+%     pause
+    
+%     % Scrambler
+%     scrambler_in = [header(8 : end) header_hcs data];
+%     scrambler_out = lfsr(scrambler_in, SIM_CONFIG.HEADER_SCRAMBLER_INITIALIZATION);
+%     scrambled_header = [header(1 : 7) scrambler_out(1 : 57)];
+%     scrambled_data = scrambler_out(58 : end);
+%     
+%     % Descrambler
+%     descrambler_in = [rx_header_zero_pad_removed(8 : end) rx_data_zero_pad_removed];
+%     descrambler_out = lfsr(descrambler_in, SIM_CONFIG.HEADER_SCRAMBLER_INITIALIZATION);
+%     descrambled_header = [rx_header_zero_pad_removed(1 : 7) descrambler_out(1 : 57)];
+%     descrambled_data = descrambler_out(58 : end);
+    
     % add cp
     tx_ofdmsym_cp = tx_ofdmsym([num.nfft-num.num_cp+1:num.nfft 1:num.nfft], :);
     
+    % test: calculate papr
+    if test_option.papr
+        tx_papr_subfrm(1, idx_subfrm) = mean(max(abs(tx_ofdmsym_cp).^2, [], 1)./mean(abs(tx_ofdmsym_cp).^2, 1));
+    end
+    
+%     figure, mesh(1:size(tx_ofdmsym_cp, 2), 1:size(tx_ofdmsym_cp, 1), abs(tx_ofdmsym_cp))
+%     pause
+    
     % serialize
     tx_ofdmsym_serial = tx_ofdmsym_cp(:);
+    
+%     assignin('base', 'tx_ofdmsym_cp', tx_ofdmsym_cp)
+%     assignin('base', 'tx_ofdmsym_serial', tx_ofdmsym_serial)
+%     pause
     
     % pass signal through channel
     [tx_ofdmsym_faded, ch_path_gain] = fading_ch(tx_ofdmsym_serial);
@@ -123,11 +170,25 @@ for idx_subfrm = 1 : size(tx_sym, 2)
     % add gaussian noise
     rx_ofdmsym_serial = awgn(tx_ofdmsym_faded, snr_db, 'measured');
     
+%     fprintf('tx_sig: %6.3f    tx_sig_awgn: %6.3f\n', mean(abs(tx_ofdmsym_serial).^2, 'all'), mean(abs(rx_ofdmsym_serial).^2, 'all'))
+%     pause
+    
     % reshape
     rx_ofdmsym_cp = reshape(rx_ofdmsym_serial, num.nfft+num.num_cp, num.num_ofdmsym_subfrm);
+%     rx_ofdmsym_cp = reshape(tx_ofdmsym_serial, num.nfft+num.num_cp, num.num_ofdmsym_subfrm);
     
     % remove cp
     rx_ofdmsym = rx_ofdmsym_cp(num.num_cp+1:end,:);
+    
+%     % test: walsh-hadamard
+%     rx_ofdmsym_wh = ifwht(rx_ofdmsym);
+%     
+%     figure
+%     subplot(2, 2, 1), mesh(1:size(rx_ofdmsym, 2), 1:size(rx_ofdmsym, 1), real(rx_ofdmsym))
+%     subplot(2, 2, 2), mesh(1:size(rx_ofdmsym, 2), 1:size(rx_ofdmsym, 1), imag(rx_ofdmsym))
+%     subplot(2, 2, 3), mesh(1:size(rx_ofdmsym_wh, 2), 1:size(rx_ofdmsym_wh, 1), real(rx_ofdmsym_wh))
+%     subplot(2, 2, 4), mesh(1:size(rx_ofdmsym_wh, 2), 1:size(rx_ofdmsym_wh, 1), imag(rx_ofdmsym_wh))
+%     pause
     
     % ofdm demodulate
     rx_sym_nfft = (1/sqrt(num.nfft)) * fft(rx_ofdmsym, [], 1);
@@ -146,7 +207,7 @@ for idx_subfrm = 1 : size(tx_sym, 2)
         rx_sym_rbs_dd = sqrt(num.num_delay_usr/num.num_doppler_usr)*fft(ifft(rx_sym_rbs_tf, [], 1), [], 2);
         
         % estimate channel
-        ch_est_rbs_dd = otfs_ch_est_dd_r1(rx_sym_rbs_dd, num, map_plan);
+        ch_est_rbs_dd = otfs_ch_est_dd_r1(rx_sym_rbs_dd, num, test_option);
         
         % equalize channel
         rx_sym_rbs_dd_eq = otfs_ch_eq_dd_r2(rx_sym_rbs_dd, ch_est_rbs_dd, num);
@@ -157,7 +218,7 @@ for idx_subfrm = 1 : size(tx_sym, 2)
         rx_sym_rbs_dd = sqrt(num.num_delay_usr/num.num_doppler_usr)*fft(ifft(rx_sym_rbs_tf, [], 1), [], 2);
         
         % estimate channel
-        ch_est_rbs_dd = otfs_ch_est_dd_r1(rx_sym_rbs_dd, num, map_plan);
+        ch_est_rbs_dd = otfs_ch_est_dd_r1(rx_sym_rbs_dd, num, test_option);
 %         figure, mesh(1:num.num_doppler_usr, 1:num.num_delay_usr, abs(ch_est_rbs_dd))
 %         pause
         
@@ -197,8 +258,54 @@ for idx_subfrm = 1 : size(tx_sym, 2)
         
     end
     
+    % test: calculate channel estimation error
+    if test_option.ch_mse
+        ch_real_rbs_tf = otfs_ch_est_tf_r1(tx_sym_rbs_tf, tx_ofdmsym_faded, num, 'real', fading_ch, ch_path_gain);
+        
+        % 2d inverse sfft for channel transformation
+        if strcmp(chest_option, 'dd_tone') && strcmp(cheq_option, 'ddeq')
+            ch_est_rbs_tf = sqrt(num.num_doppler_usr/num.num_delay_usr)*fft(ifft(ch_est_rbs_dd, [], 2), [], 1);
+        end
+        
+        ch_mse_subfrm(1, idx_subfrm) = mean(abs(ch_real_rbs_tf-ch_est_rbs_tf).^2, 'all');
+        
+        % test: dd-domain channel mse
+        ch_real_rbs_dd = sqrt(num.num_delay_usr/num.num_doppler_usr)*fft(ifft(ch_real_rbs_tf, [], 1), [], 2);
+        if ~strcmp(chest_option, 'dd_tone') && ~strcmp(cheq_option, 'ddeq')
+            ch_est_rbs_dd = sqrt(num.num_delay_usr/num.num_doppler_usr)*fft(ifft(ch_est_rbs_tf, [], 1), [], 2);
+        end
+        fprintf('tf-domain: %6.3f    dd-domain: %6.3f\n', mean(abs(ch_real_rbs_tf-ch_est_rbs_tf).^2, 'all'), mean(abs(ch_real_rbs_dd-ch_est_rbs_dd).^2, 'all'))
+        figure
+        subplot(2, 2, 1), mesh(1:size(ch_real_rbs_tf, 2), 1:size(ch_real_rbs_tf, 1), real(ch_real_rbs_tf))
+        subplot(2, 2, 3), mesh(1:size(ch_real_rbs_tf, 2), 1:size(ch_real_rbs_tf, 1), imag(ch_real_rbs_tf))
+        subplot(2, 2, 2), mesh(1:size(ch_est_rbs_tf, 2), 1:size(ch_est_rbs_tf, 1), real(ch_est_rbs_tf))
+        subplot(2, 2, 4), mesh(1:size(ch_est_rbs_tf, 2), 1:size(ch_est_rbs_tf, 1), imag(ch_est_rbs_tf))
+        figure
+        subplot(2, 2, 1), mesh(1:size(ch_real_rbs_dd, 2), 1:size(ch_real_rbs_dd, 1), real(fftshift(fftshift(ch_real_rbs_dd, 1), 2)))
+        subplot(2, 2, 3), mesh(1:size(ch_real_rbs_dd, 2), 1:size(ch_real_rbs_dd, 1), imag(fftshift(fftshift(ch_real_rbs_dd, 1), 2)))
+        subplot(2, 2, 2), mesh(1:size(ch_est_rbs_dd, 2), 1:size(ch_est_rbs_dd, 1), real(fftshift(fftshift(ch_est_rbs_dd, 1), 2)))
+        subplot(2, 2, 4), mesh(1:size(ch_est_rbs_dd, 2), 1:size(ch_est_rbs_dd, 1), imag(fftshift(fftshift(ch_est_rbs_dd, 1), 2)))
+        figure
+        subplot(2, 3, 1), mesh(1:size(tx_sym_rbs_dd, 2), 1:size(tx_sym_rbs_dd, 1), real(tx_sym_rbs_dd))
+        subplot(2, 3, 4), mesh(1:size(tx_sym_rbs_dd, 2), 1:size(tx_sym_rbs_dd, 1), imag(tx_sym_rbs_dd))
+        subplot(2, 3, 2), mesh(1:size(rx_sym_rbs_dd, 2), 1:size(rx_sym_rbs_dd, 1), real(rx_sym_rbs_dd))
+        subplot(2, 3, 5), mesh(1:size(rx_sym_rbs_dd, 2), 1:size(rx_sym_rbs_dd, 1), imag(rx_sym_rbs_dd))
+        subplot(2, 3, 3), mesh(1:size(rx_sym_rbs_dd_eq, 2), 1:size(rx_sym_rbs_dd_eq, 1), real(rx_sym_rbs_dd_eq))
+        subplot(2, 3, 6), mesh(1:size(rx_sym_rbs_dd_eq, 2), 1:size(rx_sym_rbs_dd_eq, 1), imag(rx_sym_rbs_dd_eq))
+        
+        assignin('base', 'ch_real_rbs_tf', ch_real_rbs_tf)
+        assignin('base', 'ch_real_rbs_dd', ch_real_rbs_dd)
+        assignin('base', 'ch_est_rbs_tf', ch_est_rbs_tf)
+        assignin('base', 'ch_est_rbs_dd', ch_est_rbs_dd)
+        assignin('base', 'rx_sym_rbs_tf', rx_sym_rbs_tf)
+        assignin('base', 'rx_sym_rbs_dd', rx_sym_rbs_dd)
+        
+        pause
+        
+    end
+    
     % demap data qam symbols
-    [rx_sym_data_subfrm, ~] = otfs_sym_demap_r2(rx_sym_rbs_dd_eq, num, map_plan);
+    [rx_sym_data_subfrm, ~] = otfs_sym_demap_r2(rx_sym_rbs_dd_eq, num, test_option);
     
     % buffer qam symbols
     rx_sym(:, idx_subfrm) = rx_sym_data_subfrm(:);
@@ -208,13 +315,25 @@ end
 rx_sym_serial = rx_sym(:);
 
 % compensate channel estimation error variance
-% qam_mse = mean(abs(tx_sym(:)-rx_sym(:)).^2);
+if test_option.sym_err_var
+    sym_err_var = var(tx_sym_serial-rx_sym_serial);
+    % fprintf('noise_var:%6.3f    err_var:%6.3f\n', noise_var, sym_err_var)
+%     figure
+%     subplot(2, 1, 1), plot(real(tx_sym_serial), '-b.'), hold on, plot(real(rx_sym_serial), '-r'), hold off, grid minor
+%     subplot(2, 1, 2), plot(imag(tx_sym_serial), '-b.'), hold on, plot(imag(rx_sym_serial), '-r'), hold off, grid minor
+%     pause
+else
+    sym_err_var = 0;
+end
+
 if strcmp(chest_option, 'tf_ltedown') || strcmp(chest_option, 'tf_nr')
     error_var = noise_var + 0.12;
 elseif strcmp(chest_option, 'tf_lteup')
     error_var = noise_var + 0.27;
 elseif strcmp(chest_option, 'real')
     error_var = noise_var + 0.08;
+elseif strcmp(chest_option, 'real') && (test_option.otfs_map_plan == 4 || test_option.otfs_map_plan == 5)
+    error_var = noise_var + 4.5;
 else
     error_var = noise_var;
 end
@@ -251,6 +370,20 @@ else
     pkt_error = true;
 end
 
+% calculate papr
+if test_option.papr
+    tx_papr = mean(tx_papr_subfrm);
+else
+    tx_papr = [];
+end
+
+% calculate channel mse
+if test_option.ch_mse
+    ch_mse = mean(ch_mse_subfrm);
+else
+    ch_mse = [];
+end
+
 % assignin('base', 'rx_bit_demod', rx_bit_demod);
 % assignin('base', 'rx_bit_ratematch', rx_bit_ratematch);
 % assignin('base', 'rx_bit_dec', rx_bit_dec);
@@ -262,22 +395,25 @@ end
 % pause
 
 % % dump
-% assignin('base', 'tx_sym_dd_ndft', tx_sym_rbs_dd);
-% assignin('base', 'tx_sym_tf_ndft', tx_sym_rbs_tf);
-% assignin('base', 'tx_sym_tf_subc', tx_sym_bw);
-% assignin('base', 'tx_sym_tf_nfft', tx_sym_nfft_shift);
-% assignin('base', 'tx_sym_tf_nfft_shift', tx_sym_nfft);
-% assignin('base', 'tx_ofdm_sym', tx_ofdmsym);
-% assignin('base', 'tx_ofdm_sym_cp', tx_ofdmsym_cp);
-% assignin('base', 'tx_ofdm_sym_serial', tx_ofdmsym_serial);
-% assignin('base', 'tx_ofdm_sym_faded', tx_ofdmsym_faded);
-% assignin('base', 'rx_ofdm_sym_serial', rx_ofdmsym_serial);
-% assignin('base', 'rx_ofdm_sym_cp', rx_ofdmsym_cp);
-% assignin('base', 'rx_ofdm_sym', rx_ofdmsym);
-% assignin('base', 'rx_sym_tf_nfft', rx_sym_nfft);
-% assignin('base', 'rx_sym_tf_nfft_shift', rx_sym_nfft_shift);
-% assignin('base', 'rx_sym_tf_subc', rx_sym_bw);
-% assignin('base', 'rx_sym_tf_ndft', rx_sym_rbs);
-% assignin('base', 'rx_sym_dd_ndft_eq', rx_sym_dd_ndft_eq);
+% assignin('base', 'tx_sym_rbs_dd', tx_sym_rbs_dd);
+% assignin('base', 'tx_sym_rbs_tf', tx_sym_rbs_tf);
+% assignin('base', 'tx_sym_bw', tx_sym_bw);
+% assignin('base', 'tx_sym_nfft_shift', tx_sym_nfft_shift);
+% assignin('base', 'tx_sym_nfft', tx_sym_nfft);
+% assignin('base', 'tx_ofdmsym', tx_ofdmsym);
+% assignin('base', 'tx_ofdmsym_cp', tx_ofdmsym_cp);
+% assignin('base', 'tx_ofdmsym_serial', tx_ofdmsym_serial);
+% assignin('base', 'tx_ofdmsym_faded', tx_ofdmsym_faded);
+% assignin('base', 'rx_ofdmsym_serial', rx_ofdmsym_serial);
+% assignin('base', 'rx_ofdmsym_cp', rx_ofdmsym_cp);
+% assignin('base', 'rx_ofdmsym', rx_ofdmsym);
+% assignin('base', 'rx_sym_nfft', rx_sym_nfft);
+% assignin('base', 'rx_sym_nfft_shift', rx_sym_nfft_shift);
+% assignin('base', 'rx_sym_bw', rx_sym_bw);
+% assignin('base', 'rx_sym_rbs_dd', rx_sym_rbs_dd);
+% assignin('base', 'rx_sym_rbs_tf', rx_sym_rbs_tf);
+% assignin('base', 'rx_sym_rbs_tf_eq', rx_sym_rbs_tf_eq);
+% assignin('base', 'rx_sym_rbs_dd_eq', rx_sym_rbs_dd_eq);
+% pause
 
 end

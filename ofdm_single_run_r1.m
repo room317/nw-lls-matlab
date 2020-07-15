@@ -178,6 +178,11 @@ for subfrm_idx = 1 : size(tx_sym_subfrm, 2)
     rx_sym_eq(:, subfrm_idx) = rx_sym_eq_subfrm(:);
 end
 
+% noise_var = mean(abs(tx_sym(:)-rx_sym_eq(:)).^2);
+% fprintf('Noise variance: %10.4f\n', noise_var)
+% figure, scatter(real(rx_sym_eq(:)), imag(rx_sym_eq(:)), 'r.'), hold on, scatter(real(tx_sym(:)), imag(tx_sym(:)), 'ko'), hold off, axis([-2 2 -2 2])
+% pause
+
 % demap the qam symbols
 rx_bit_demod = (-1) * qamdemod(rx_sym_eq(:), 2^rm.Qm, 'UnitAveragePower', true, ...
     'OutputType', 'llr', 'NoiseVariance', noise_var);

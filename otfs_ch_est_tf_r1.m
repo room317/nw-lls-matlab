@@ -26,7 +26,7 @@ if strcmp(chest_option, 'real')
         path_gain_mat = ch_path_gain_reshape(:, idx_ch_doppler, :);
         ch_mat_per_path = path_gain_mat .* ch_coeff_mat;
         ch_real_mat_t(:, :, idx_ch_doppler) = sum(ch_mat_per_path, 3);
-        ch_real_halfmap_mat_tf(:, :, idx_ch_doppler) = ifft(fft(ch_real_mat_t(:, :, idx_ch_doppler), [], 1), [], 2);
+        ch_real_halfmap_mat_tf(:, :, idx_ch_doppler) = ifft(fft(ch_real_mat_t(:, :, idx_ch_doppler), [], 1), [], 2);    % circulant matrix svd
     end
     ch_real_mat_shift_tf = fftshift(fftshift(ch_real_halfmap_mat_tf, 2), 1);
     ch_real_mat_tf = ...
