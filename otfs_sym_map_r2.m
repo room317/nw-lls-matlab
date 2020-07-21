@@ -65,15 +65,21 @@ if test_option.otfs_map_plan == 1 || test_option.otfs_map_plan == 2 || test_opti
         % reduce 2d-impulse pilot symbol power and boost data symbol power
         % set power as 'time domain' pilot impulse not to exceed average data power for papr reduction
         pwr_data = (num.num_delay_usr*num.num_doppler_usr)/ ...
-            ((num.num_delay_usr*num.num_doppler_usr)-((num.num_delay_pilot_usr-1)*num.num_doppler_pilot_usr));
-        pwr_pilot = pwr_data*num.num_doppler_pilot_usr;
+            ((num.num_delay_usr*num.num_doppler_usr)-(num.num_delay_pilot_usr*num.num_doppler_pilot_usr)+(num.num_doppler_pilot_usr.^2)/2);
+        pwr_pilot = pwr_data*(num.num_doppler_pilot_usr.^2)/2;
     else
         % normal 2d-impulse pilot
         pwr_data = 1;
         pwr_pilot = num.num_delay_pilot_usr*num.num_doppler_pilot_usr;
     end
     
-elseif test_option.otfs_map_plan == 4 || test_option.otfs_map_plan == 5 || test_option.otfs_map_plan == 6   % use pilot sequence (spreading)
+elseif test_option.otfs_map_plan == 4 || test_option.otfs_map_plan == 5   % use pilot sequence (spreaded by zadoff-chu)
+    
+    % set power for sequence spreading
+    pwr_data = 1;
+    pwr_pilot = num.num_delay_pilot_usr*num.num_doppler_pilot_usr/length(test_option.otfs_pilot_spread_seq);
+    
+elseif test_option.otfs_map_plan == 6   % use pilot sequence (all ones)
     
     % set power for sequence spreading
     pwr_data = 1;
@@ -96,7 +102,7 @@ if test_option.otfs_map_plan == 1 || test_option.otfs_map_plan == 2 || test_opti
     tx_sym_pilot_subfrm = zeros(num.num_delay_pilot_usr, num.num_doppler_pilot_usr);
     tx_sym_pilot_subfrm(idx_delay_pilot_usr, idx_doppler_pilot_usr) = sqrt(pwr_pilot);     % boosts pilots
     
-elseif test_option.otfs_map_plan == 4 || test_option.otfs_map_plan == 5 || test_option.otfs_map_plan == 6   % use pilot sequence (spreading)
+elseif test_option.otfs_map_plan == 4 || test_option.otfs_map_plan == 5   % use pilot sequence (spreaded by zadoff-chu)
     
     % map spread sequence
 %     idx_pilot_seq = [ceil((num.num_delay_pilot_usr+num.num_delay_guard_usr-length(test_option.pilot_spread_seq))/2), num.num_doppler_guard_usr];
@@ -107,6 +113,18 @@ elseif test_option.otfs_map_plan == 4 || test_option.otfs_map_plan == 5 || test_
         idx_delay_pilot_usr-ceil(length(test_option.otfs_pilot_spread_seq)/2)+length(test_option.otfs_pilot_spread_seq), ...
         idx_doppler_pilot_usr) = ...
         sqrt(pwr_pilot)*test_option.otfs_pilot_spread_seq;
+    
+elseif test_option.otfs_map_plan == 6   % use pilot sequence (all ones)
+    
+    % map spread sequence
+%     idx_pilot_seq = [ceil((num.num_delay_pilot_usr+num.num_delay_guard_usr-length(test_option.pilot_spread_seq))/2), num.num_doppler_guard_usr];
+%     tx_sym_pilot_guard_subfrm = zeros(num.num_delay_pilot_usr+num.num_delay_guard_usr, num.num_doppler_pilot_usr+num.num_doppler_guard_usr);
+%     tx_sym_pilot_guard_subfrm(idx_pilot_seq(1)+1:idx_pilot_seq(1)+length(test_option.pilot_spread_seq), idx_pilot_seq(2)+1) = sqrt(pwr_pilot)*test_option.pilot_spread_seq;
+    tx_sym_pilot_subfrm = zeros(num.num_delay_pilot_usr, num.num_doppler_pilot_usr);
+    tx_sym_pilot_subfrm(idx_delay_pilot_usr-ceil(length(test_option.otfs_pilot_seq_ones)/2)+1: ...
+        idx_delay_pilot_usr-ceil(length(test_option.otfs_pilot_seq_ones)/2)+length(test_option.otfs_pilot_seq_ones), ...
+        idx_doppler_pilot_usr) = ...
+        sqrt(pwr_pilot)*test_option.otfs_pilot_seq_ones;
     
 else
     error('''otfs_map_plan'' must be one of these: {1, 2, 3, 4, 5, 6}')

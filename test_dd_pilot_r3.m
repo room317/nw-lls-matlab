@@ -33,7 +33,7 @@ cfo_norm = 0; % normalized cfo. cfo = cfo_norm/t_sym;
 carrier_freq_mhz = 4000;
 velocity_kmh = 120;
 idx_fading = 9; % 9: TDL-A, 12: TDL-D
-delay_spread_rms_us = 0.01; %0.1e-6;
+delay_spread_rms_us = 0.1; %0.1e-6;
 test_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, snr_db, delay_spread_rms_us);
 
 % guard area

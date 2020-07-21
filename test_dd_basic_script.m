@@ -1,4 +1,6 @@
 % test_dd_basic script
+%   - test channel estimation error with respect to the position of the
+%     pilot tone
 % created: 2020.05.01
 % modified:
 %   -
@@ -9,7 +11,7 @@ test_scope = false;
 test_seed = -1;
 
 % set parameters
-NumSim = 20;
+NumSim = 4;
 NumSubc = 600;
 NumSym = 14;
     
@@ -27,13 +29,14 @@ for idx_subc = 0 : NumSubc-1
             % simulate single packet
 %             ch_est_rmse = test_dd_basic(test_synch, [idx_subc, idx_sym], test_scope, test_seed);
             ch_est_rmse = test_dd_basic_r1(test_synch, [idx_subc, idx_sym], test_scope, test_seed, 1);
+%             [ch_est_rmse, ~] = test_dd_basic_r2(test_synch, [idx_subc, idx_sym], test_scope, test_seed, 1);
 
             % sum channel mse
             total_ch_est_mse = total_ch_est_mse + ch_est_rmse.^2;
         end
         
         % compute bit error rate
-        test_sim_result(idx_subc+1, idx_sym+1) = sqrt(mean(total_ch_est_mse));
+        test_sim_result(idx_subc+1, idx_sym+1) = sqrt(total_ch_est_mse/NumSim);
     
         % print simulation result
         fprintf('\b\b\b\b\b\b\b\b');

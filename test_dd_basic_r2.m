@@ -5,6 +5,7 @@
 %   - test_scope: print and plot results
 %   - test_seed: synch position
 %   - test_timesaving: save time to regenerate channels
+%   - test_latency: latency test with partial reception (number of symbols received)
 % created: 2020.03.23
 % modified:
 %   - 2020.03.28:
@@ -12,10 +13,11 @@
 %   - 2020.06.30: walsh_hadamard spreading (not working as intended)
 %   - 2020.06.30: papr calculation
 %   - 2020.06.30: symbol scrambling (not working as intended)
+%   - 2020.07.19: latency test with partial reception (test_latency)
 % memo
 %   - https://kr.mathworks.com/help/comm/ref/comm.rayleighchannel-system-object.html#d120e191883
 
-function [ch_rmse, papr_db] = test_dd_basic_r2(test_synch, test_tone, test_scope, test_seed, test_timesaving)
+function [ch_rmse, papr_db] = test_dd_basic_r2(test_synch, test_tone, test_scope, test_seed, test_timesaving, test_latency)
 
 % set parameter
 num_ofdm_subc = 1024;
@@ -204,9 +206,16 @@ rx_ofdm_sym_cp = reshape(rx_sig_synch, num_ofdm_subc+len_cp, []);
 % remove cp (with synch: to observe impact of time shift)
 rx_ofdm_sym = rx_ofdm_sym_cp(1:num_ofdm_subc, :);
 
+% remove parts of received symbols
+if isscalar(test_latency) && ismember(test_latency, 1:num_ofdm_sym-1)
+    rx_ofdm_sym_part = [rx_ofdm_sym(:, 1:test_latency) zeros(size(rx_ofdm_sym, 1), num_ofdm_sym-test_latency)];
+else
+    rx_ofdm_sym_part = rx_ofdm_sym;
+end
+
 % despread with walsh-hadamard
 % rx_ofdm_sym_wh = ifwht(rx_ofdm_sym);
-rx_ofdm_sym_wh = rx_ofdm_sym;
+rx_ofdm_sym_wh = rx_ofdm_sym_part;
 
 % ofdm demodulate the symbol
 rx_sym_map_tf = (1/sqrt(num_ofdm_subc)) * fft(rx_ofdm_sym_wh, [], 1);
@@ -218,10 +227,10 @@ rx_sym_tf = rx_sym_map_shift_tf(idx_ofdm_map(1)+1:idx_ofdm_map(1)+num_subc, idx_
 % 2d inverse sfft
 rx_sym_dd = sqrt(num_subc/num_sym) * fft(ifft(rx_sym_tf, [], 1), [], 2);
 
-% descramble data
-for idx = 1 : num_sym
-    rx_sym_dd(:, idx) = lfsr_soft(rx_sym_dd(:, idx), [1 1 1 1 1 1 1]);
-end
+% % descramble data
+% for idx = 1 : num_sym
+%     rx_sym_dd(:, idx) = lfsr_soft(rx_sym_dd(:, idx), [1 1 1 1 1 1 1]);
+% end
 
 % output: channel estimation error
 if isempty(test_tone)

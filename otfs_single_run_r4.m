@@ -180,6 +180,13 @@ for idx_subfrm = 1 : size(tx_sym, 2)
     % remove cp
     rx_ofdmsym = rx_ofdmsym_cp(num.num_cp+1:end,:);
     
+    % remove parts of received symbols
+    if isscalar(test_option.partial_reception) && ismember(test_option.partial_reception, 1:num.num_ofdmsym_subfrm-1)
+        rx_ofdmsym_part = [rx_ofdmsym(:, 1:test_option.partial_reception) zeros(size(rx_ofdmsym, 1), num.num_ofdmsym_subfrm-test_option.partial_reception)];
+    else
+        rx_ofdmsym_part = rx_ofdmsym;
+    end
+    
 %     % test: walsh-hadamard
 %     rx_ofdmsym_wh = ifwht(rx_ofdmsym);
 %     
@@ -191,7 +198,7 @@ for idx_subfrm = 1 : size(tx_sym, 2)
 %     pause
     
     % ofdm demodulate
-    rx_sym_nfft = (1/sqrt(num.nfft)) * fft(rx_ofdmsym, [], 1);
+    rx_sym_nfft = (1/sqrt(num.nfft)) * fft(rx_ofdmsym_part, [], 1);
     
     % demap symbols in bandwidth from fft range
     rx_sym_nfft_shift = fftshift(rx_sym_nfft, 1);
@@ -269,38 +276,37 @@ for idx_subfrm = 1 : size(tx_sym, 2)
         
         ch_mse_subfrm(1, idx_subfrm) = mean(abs(ch_real_rbs_tf-ch_est_rbs_tf).^2, 'all');
         
-        % test: dd-domain channel mse
-        ch_real_rbs_dd = sqrt(num.num_delay_usr/num.num_doppler_usr)*fft(ifft(ch_real_rbs_tf, [], 1), [], 2);
-        if ~strcmp(chest_option, 'dd_tone') && ~strcmp(cheq_option, 'ddeq')
-            ch_est_rbs_dd = sqrt(num.num_delay_usr/num.num_doppler_usr)*fft(ifft(ch_est_rbs_tf, [], 1), [], 2);
-        end
-        fprintf('tf-domain: %6.3f    dd-domain: %6.3f\n', mean(abs(ch_real_rbs_tf-ch_est_rbs_tf).^2, 'all'), mean(abs(ch_real_rbs_dd-ch_est_rbs_dd).^2, 'all'))
-        figure
-        subplot(2, 2, 1), mesh(1:size(ch_real_rbs_tf, 2), 1:size(ch_real_rbs_tf, 1), real(ch_real_rbs_tf))
-        subplot(2, 2, 3), mesh(1:size(ch_real_rbs_tf, 2), 1:size(ch_real_rbs_tf, 1), imag(ch_real_rbs_tf))
-        subplot(2, 2, 2), mesh(1:size(ch_est_rbs_tf, 2), 1:size(ch_est_rbs_tf, 1), real(ch_est_rbs_tf))
-        subplot(2, 2, 4), mesh(1:size(ch_est_rbs_tf, 2), 1:size(ch_est_rbs_tf, 1), imag(ch_est_rbs_tf))
-        figure
-        subplot(2, 2, 1), mesh(1:size(ch_real_rbs_dd, 2), 1:size(ch_real_rbs_dd, 1), real(fftshift(fftshift(ch_real_rbs_dd, 1), 2)))
-        subplot(2, 2, 3), mesh(1:size(ch_real_rbs_dd, 2), 1:size(ch_real_rbs_dd, 1), imag(fftshift(fftshift(ch_real_rbs_dd, 1), 2)))
-        subplot(2, 2, 2), mesh(1:size(ch_est_rbs_dd, 2), 1:size(ch_est_rbs_dd, 1), real(fftshift(fftshift(ch_est_rbs_dd, 1), 2)))
-        subplot(2, 2, 4), mesh(1:size(ch_est_rbs_dd, 2), 1:size(ch_est_rbs_dd, 1), imag(fftshift(fftshift(ch_est_rbs_dd, 1), 2)))
-        figure
-        subplot(2, 3, 1), mesh(1:size(tx_sym_rbs_dd, 2), 1:size(tx_sym_rbs_dd, 1), real(tx_sym_rbs_dd))
-        subplot(2, 3, 4), mesh(1:size(tx_sym_rbs_dd, 2), 1:size(tx_sym_rbs_dd, 1), imag(tx_sym_rbs_dd))
-        subplot(2, 3, 2), mesh(1:size(rx_sym_rbs_dd, 2), 1:size(rx_sym_rbs_dd, 1), real(rx_sym_rbs_dd))
-        subplot(2, 3, 5), mesh(1:size(rx_sym_rbs_dd, 2), 1:size(rx_sym_rbs_dd, 1), imag(rx_sym_rbs_dd))
-        subplot(2, 3, 3), mesh(1:size(rx_sym_rbs_dd_eq, 2), 1:size(rx_sym_rbs_dd_eq, 1), real(rx_sym_rbs_dd_eq))
-        subplot(2, 3, 6), mesh(1:size(rx_sym_rbs_dd_eq, 2), 1:size(rx_sym_rbs_dd_eq, 1), imag(rx_sym_rbs_dd_eq))
-        
-        assignin('base', 'ch_real_rbs_tf', ch_real_rbs_tf)
-        assignin('base', 'ch_real_rbs_dd', ch_real_rbs_dd)
-        assignin('base', 'ch_est_rbs_tf', ch_est_rbs_tf)
-        assignin('base', 'ch_est_rbs_dd', ch_est_rbs_dd)
-        assignin('base', 'rx_sym_rbs_tf', rx_sym_rbs_tf)
-        assignin('base', 'rx_sym_rbs_dd', rx_sym_rbs_dd)
-        
-        pause
+%         % test: dd-domain channel mse
+%         ch_real_rbs_dd = sqrt(num.num_delay_usr/num.num_doppler_usr)*fft(ifft(ch_real_rbs_tf, [], 1), [], 2);
+%         if ~strcmp(chest_option, 'dd_tone') && ~strcmp(cheq_option, 'ddeq')
+%             ch_est_rbs_dd = sqrt(num.num_delay_usr/num.num_doppler_usr)*fft(ifft(ch_est_rbs_tf, [], 1), [], 2);
+%         end
+%         fprintf('tf-domain: %6.3f    dd-domain: %6.3f\n', mean(abs(ch_real_rbs_tf-ch_est_rbs_tf).^2, 'all'), mean(abs(ch_real_rbs_dd-ch_est_rbs_dd).^2, 'all'))
+%         figure
+%         subplot(2, 2, 1), mesh(1:size(ch_real_rbs_tf, 2), 1:size(ch_real_rbs_tf, 1), real(ch_real_rbs_tf))
+%         subplot(2, 2, 3), mesh(1:size(ch_real_rbs_tf, 2), 1:size(ch_real_rbs_tf, 1), imag(ch_real_rbs_tf))
+%         subplot(2, 2, 2), mesh(1:size(ch_est_rbs_tf, 2), 1:size(ch_est_rbs_tf, 1), real(ch_est_rbs_tf))
+%         subplot(2, 2, 4), mesh(1:size(ch_est_rbs_tf, 2), 1:size(ch_est_rbs_tf, 1), imag(ch_est_rbs_tf))
+%         figure
+%         subplot(2, 2, 1), mesh(1:size(ch_real_rbs_dd, 2), 1:size(ch_real_rbs_dd, 1), real(fftshift(fftshift(ch_real_rbs_dd, 1), 2)))
+%         subplot(2, 2, 3), mesh(1:size(ch_real_rbs_dd, 2), 1:size(ch_real_rbs_dd, 1), imag(fftshift(fftshift(ch_real_rbs_dd, 1), 2)))
+%         subplot(2, 2, 2), mesh(1:size(ch_est_rbs_dd, 2), 1:size(ch_est_rbs_dd, 1), real(fftshift(fftshift(ch_est_rbs_dd, 1), 2)))
+%         subplot(2, 2, 4), mesh(1:size(ch_est_rbs_dd, 2), 1:size(ch_est_rbs_dd, 1), imag(fftshift(fftshift(ch_est_rbs_dd, 1), 2)))
+%         figure
+%         subplot(2, 3, 1), mesh(1:size(tx_sym_rbs_dd, 2), 1:size(tx_sym_rbs_dd, 1), real(tx_sym_rbs_dd))
+%         subplot(2, 3, 4), mesh(1:size(tx_sym_rbs_dd, 2), 1:size(tx_sym_rbs_dd, 1), imag(tx_sym_rbs_dd))
+%         subplot(2, 3, 2), mesh(1:size(rx_sym_rbs_dd, 2), 1:size(rx_sym_rbs_dd, 1), real(rx_sym_rbs_dd))
+%         subplot(2, 3, 5), mesh(1:size(rx_sym_rbs_dd, 2), 1:size(rx_sym_rbs_dd, 1), imag(rx_sym_rbs_dd))
+%         subplot(2, 3, 3), mesh(1:size(rx_sym_rbs_dd_eq, 2), 1:size(rx_sym_rbs_dd_eq, 1), real(rx_sym_rbs_dd_eq))
+%         subplot(2, 3, 6), mesh(1:size(rx_sym_rbs_dd_eq, 2), 1:size(rx_sym_rbs_dd_eq, 1), imag(rx_sym_rbs_dd_eq))
+%         
+%         assignin('base', 'ch_real_rbs_tf', ch_real_rbs_tf)
+%         assignin('base', 'ch_real_rbs_dd', ch_real_rbs_dd)
+%         assignin('base', 'ch_est_rbs_tf', ch_est_rbs_tf)
+%         assignin('base', 'ch_est_rbs_dd', ch_est_rbs_dd)
+%         assignin('base', 'rx_sym_rbs_tf', rx_sym_rbs_tf)
+%         assignin('base', 'rx_sym_rbs_dd', rx_sym_rbs_dd)
+%         pause
         
     end
     

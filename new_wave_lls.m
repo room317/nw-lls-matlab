@@ -15,7 +15,7 @@ test_dd_pilot = false;  % allocate whole resource block to pilot
 test_real_ch = false;   % real channel with ici into consideration
 
 % set parameters
-SNRCnt = 20;
+SNRCnt = 10;
 SNRStep = 2;
 ErrorStop = 400;
 ErrorBreak = 0.001;
@@ -65,12 +65,14 @@ while 1
     
     % set test option
     test_option.papr = false;               % papr test
-    test_option.ch_mse = true;             % channel mmse test
+    test_option.ch_mse = false;             % channel mmse test
     test_option.sym_err_var = false;        % symbol error variance test
-    test_option.ch_edge_interp = false;     % tf-channel edge interpolation test
-    test_option.otfs_map_plan = 4;          % pilot resource mapping test (refer to 'otfs_sym_map_r2.m')
+    test_option.ch_edge_interp = false;     % tf-channel edge interpolation test (no use)
+    test_option.partial_reception = 14;   % partial reception test for latency enhancement (number of symbols received)
+    test_option.otfs_map_plan = 3;          % pilot resource mapping test (refer to 'otfs_sym_map_r2.m')
     test_option.otfs_pilot_impulse_pwr_reduction = false;       % valid only when impulse pilot is used
     test_option.otfs_pilot_spread_seq = zadoffChuSeq(1,37);     % pilot spread seq. (zadoff-chu sequence spreading)
+    test_option.otfs_pilot_seq_ones = ones(37, 1);              % pilot spread seq. (all ones)
 %     test_option.otfs_pilot_spread_seq = exp(-1i*pi*25*(0:36).*(1:37)/37);
     
     % check test option
