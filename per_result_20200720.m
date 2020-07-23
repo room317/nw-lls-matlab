@@ -82,7 +82,7 @@ semilogy(per_case04(:,1),per_case04(:,2),'-ks')
 semilogy(per_case05(:,1),per_case05(:,2),'-k^')
 semilogy(per_case06(:,1),per_case06(:,2),'-kd'), hold off
 grid minor
-title({'PER performance of partially received subframe'; 'OFDM BW10 FC4000 DS0.1 TDLA MCS8 LEN6120 TFNR TFEQMMSE'})
+title({'PER performance of partially received subframe'; 'OTFS BW10 FC4000 DS0.1 TDLA MCS8 LEN6120 DDTONE TFEQMMSE'})
 xlabel('SNR (dB)'), ylabel('PER')
 legend('10/14 received', '11/14 received', '12/14 received', '13/14 received', '14/14 received')
 axis([-1 19 1e-3 1])

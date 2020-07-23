@@ -96,11 +96,11 @@ for idx_subfrm = 1 : size(tx_sym, 2)
     tx_sym_data_subfrm = tx_sym(:, idx_subfrm);
     
     % map data and pilot symbols
-    tx_sym_rbs_dd = otfs_sym_map_r2(tx_sym_data_subfrm, num, test_option);
-    
-%     assignin('base', 'tx_sym_data_subfrm', tx_sym_data_subfrm)
-%     assignin('base', 'tx_sym_rbs_dd', tx_sym_rbs_dd)
-%     pause
+    if strcmp(chest_option, 'dd_tone')
+        tx_sym_rbs_dd = otfs_sym_map_r2(tx_sym_data_subfrm, num, test_option);
+    else
+        tx_sym_rbs_dd = reshape(tx_sym_data_subfrm, num.num_delay_usr, []);
+    end
     
     % 2d sfft (otfs transform, from delay-doppler domain to freq-time domain)
     tx_sym_rbs_tf = sqrt(num.num_ofdmsym_usr/num.num_subc_usr)*fft(ifft(tx_sym_rbs_dd, [], 2), [], 1);
@@ -311,7 +311,11 @@ for idx_subfrm = 1 : size(tx_sym, 2)
     end
     
     % demap data qam symbols
-    [rx_sym_data_subfrm, ~] = otfs_sym_demap_r2(rx_sym_rbs_dd_eq, num, test_option);
+    if strcmp(chest_option, 'dd_tone')
+        [rx_sym_data_subfrm, ~] = otfs_sym_demap_r2(rx_sym_rbs_dd_eq, num, test_option);
+    else
+        rx_sym_data_subfrm = reshape(rx_sym_rbs_dd_eq, num.num_delay_usr, []);
+    end
     
     % buffer qam symbols
     rx_sym(:, idx_subfrm) = rx_sym_data_subfrm(:);
