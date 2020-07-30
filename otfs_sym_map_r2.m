@@ -55,7 +55,7 @@
 %    (1)data       :  d d d d d d d d d d d d d d d d
 %    (0)data       :  d d d d d d d d d d d d d d d d
 
-function tx_sym_rbs_dd = otfs_sym_map_r2(tx_sym_data_subfrm, num, test_option)
+function tx_sym_rbs_dd = otfs_sym_map_r2(tx_sym_data_slot, num, test_option)
 
 % set normalized data and pilot symbol power
 if test_option.otfs_map_plan == 1 || test_option.otfs_map_plan == 2 || test_option.otfs_map_plan == 3   % use impulse pilot
@@ -99,17 +99,17 @@ idx_doppler_pilot_usr = floor(num.num_doppler_pilot_usr/2)+1;
 if test_option.otfs_map_plan == 1 || test_option.otfs_map_plan == 2 || test_option.otfs_map_plan == 3   % use impulse pilot
     
     % generate pilot symbols
-    tx_sym_pilot_subfrm = zeros(num.num_delay_pilot_usr, num.num_doppler_pilot_usr);
-    tx_sym_pilot_subfrm(idx_delay_pilot_usr, idx_doppler_pilot_usr) = sqrt(pwr_pilot);     % boosts pilots
+    tx_sym_pilot_slot = zeros(num.num_delay_pilot_usr, num.num_doppler_pilot_usr);
+    tx_sym_pilot_slot(idx_delay_pilot_usr, idx_doppler_pilot_usr) = sqrt(pwr_pilot);     % boosts pilots
     
 elseif test_option.otfs_map_plan == 4 || test_option.otfs_map_plan == 5   % use pilot sequence (spreaded by zadoff-chu)
     
     % map spread sequence
 %     idx_pilot_seq = [ceil((num.num_delay_pilot_usr+num.num_delay_guard_usr-length(test_option.pilot_spread_seq))/2), num.num_doppler_guard_usr];
-%     tx_sym_pilot_guard_subfrm = zeros(num.num_delay_pilot_usr+num.num_delay_guard_usr, num.num_doppler_pilot_usr+num.num_doppler_guard_usr);
-%     tx_sym_pilot_guard_subfrm(idx_pilot_seq(1)+1:idx_pilot_seq(1)+length(test_option.pilot_spread_seq), idx_pilot_seq(2)+1) = sqrt(pwr_pilot)*test_option.pilot_spread_seq;
-    tx_sym_pilot_subfrm = zeros(num.num_delay_pilot_usr, num.num_doppler_pilot_usr);
-    tx_sym_pilot_subfrm(idx_delay_pilot_usr-ceil(length(test_option.otfs_pilot_spread_seq)/2)+1: ...
+%     tx_sym_pilot_guard_slot = zeros(num.num_delay_pilot_usr+num.num_delay_guard_usr, num.num_doppler_pilot_usr+num.num_doppler_guard_usr);
+%     tx_sym_pilot_guard_slot(idx_pilot_seq(1)+1:idx_pilot_seq(1)+length(test_option.pilot_spread_seq), idx_pilot_seq(2)+1) = sqrt(pwr_pilot)*test_option.pilot_spread_seq;
+    tx_sym_pilot_slot = zeros(num.num_delay_pilot_usr, num.num_doppler_pilot_usr);
+    tx_sym_pilot_slot(idx_delay_pilot_usr-ceil(length(test_option.otfs_pilot_spread_seq)/2)+1: ...
         idx_delay_pilot_usr-ceil(length(test_option.otfs_pilot_spread_seq)/2)+length(test_option.otfs_pilot_spread_seq), ...
         idx_doppler_pilot_usr) = ...
         sqrt(pwr_pilot)*test_option.otfs_pilot_spread_seq;
@@ -118,10 +118,10 @@ elseif test_option.otfs_map_plan == 6   % use pilot sequence (all ones)
     
     % map spread sequence
 %     idx_pilot_seq = [ceil((num.num_delay_pilot_usr+num.num_delay_guard_usr-length(test_option.pilot_spread_seq))/2), num.num_doppler_guard_usr];
-%     tx_sym_pilot_guard_subfrm = zeros(num.num_delay_pilot_usr+num.num_delay_guard_usr, num.num_doppler_pilot_usr+num.num_doppler_guard_usr);
-%     tx_sym_pilot_guard_subfrm(idx_pilot_seq(1)+1:idx_pilot_seq(1)+length(test_option.pilot_spread_seq), idx_pilot_seq(2)+1) = sqrt(pwr_pilot)*test_option.pilot_spread_seq;
-    tx_sym_pilot_subfrm = zeros(num.num_delay_pilot_usr, num.num_doppler_pilot_usr);
-    tx_sym_pilot_subfrm(idx_delay_pilot_usr-ceil(length(test_option.otfs_pilot_seq_ones)/2)+1: ...
+%     tx_sym_pilot_guard_slot = zeros(num.num_delay_pilot_usr+num.num_delay_guard_usr, num.num_doppler_pilot_usr+num.num_doppler_guard_usr);
+%     tx_sym_pilot_guard_slot(idx_pilot_seq(1)+1:idx_pilot_seq(1)+length(test_option.pilot_spread_seq), idx_pilot_seq(2)+1) = sqrt(pwr_pilot)*test_option.pilot_spread_seq;
+    tx_sym_pilot_slot = zeros(num.num_delay_pilot_usr, num.num_doppler_pilot_usr);
+    tx_sym_pilot_slot(idx_delay_pilot_usr-ceil(length(test_option.otfs_pilot_seq_ones)/2)+1: ...
         idx_delay_pilot_usr-ceil(length(test_option.otfs_pilot_seq_ones)/2)+length(test_option.otfs_pilot_seq_ones), ...
         idx_doppler_pilot_usr) = ...
         sqrt(pwr_pilot)*test_option.otfs_pilot_seq_ones;
@@ -130,19 +130,19 @@ else
     error('''otfs_map_plan'' must be one of these: {1, 2, 3, 4, 5, 6}')
 end
 
-% fprintf('pilot:%6.3f\n', sqrt(mean(abs(tx_sym_pilot_guard_subfrm).^2, 'all')))
+% fprintf('pilot:%6.3f\n', sqrt(mean(abs(tx_sym_pilot_guard_slot).^2, 'all')))
 
 % reshape data symbols
-tx_sym_data1_subfrm = sqrt(pwr_data)*reshape(tx_sym_data_subfrm(1:num.num_delay_data_usr*num.num_doppler_usr), num.num_delay_data_usr, []);
-tx_sym_data2_subfrm = sqrt(pwr_data)*reshape(tx_sym_data_subfrm(num.num_delay_data_usr*num.num_doppler_usr+1:end), num.num_delay_pilot_usr, []);
+tx_sym_data1_slot = sqrt(pwr_data)*reshape(tx_sym_data_slot(1:num.num_delay_data_usr*num.num_doppler_usr), num.num_delay_data_usr, []);
+tx_sym_data2_slot = sqrt(pwr_data)*reshape(tx_sym_data_slot(num.num_delay_data_usr*num.num_doppler_usr+1:end), num.num_delay_pilot_usr, []);
 
-% fprintf('data1:%6.3f\n', sqrt(mean(abs(tx_sym_data1_subfrm).^2, 'all')))
-% fprintf('data2:%6.3f\n', sqrt(mean(abs(tx_sym_data2_subfrm).^2, 'all')))
+% fprintf('data1:%6.3f\n', sqrt(mean(abs(tx_sym_data1_slot).^2, 'all')))
+% fprintf('data2:%6.3f\n', sqrt(mean(abs(tx_sym_data2_slot).^2, 'all')))
 
 % map resource block
 tx_sym_map_basic = [ ...
-    tx_sym_pilot_subfrm, tx_sym_data2_subfrm;
-    tx_sym_data1_subfrm];
+    tx_sym_pilot_slot, tx_sym_data2_slot;
+    tx_sym_data1_slot];
 
 % fprintf('total:%6.3f\n', sqrt(mean(abs(tx_sym_map_basic).^2, 'all')))
 % pause
@@ -163,10 +163,10 @@ tx_sym_rbs_dd = circshift(tx_sym_map_basic, map_shift);
 % tone_pos = [num.num_delay_guard_usr, num.num_doppler_guard_usr]+map_shift;
 
 % % dump variables
-% assignin('base', 'tx_sym_data_subfrm', tx_sym_data_subfrm);
-% assignin('base', 'tx_sym_pilot_subfrm', tx_sym_pilot_subfrm);
-% assignin('base', 'tx_sym_data1_subfrm', tx_sym_data1_subfrm);
-% assignin('base', 'tx_sym_data2_subfrm', tx_sym_data2_subfrm);
+% assignin('base', 'tx_sym_data_slot', tx_sym_data_slot);
+% assignin('base', 'tx_sym_pilot_slot', tx_sym_pilot_slot);
+% assignin('base', 'tx_sym_data1_slot', tx_sym_data1_slot);
+% assignin('base', 'tx_sym_data2_slot', tx_sym_data2_slot);
 % assignin('base', 'tx_sym_map_basic', tx_sym_map_basic);
 % assignin('base', 'tx_sym_rbs_dd', tx_sym_rbs_dd);
 % pause

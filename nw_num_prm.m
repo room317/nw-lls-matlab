@@ -1,23 +1,31 @@
-function nw_num = nw_num_prm(idx_bandwidth, waveform, chest_option)
+function nw_num = nw_num_prm(bw_mhz, waveform, chest_option)
 
 % idx_bandwidth = 4;
 
 % numerical setup
 % resource block table (bandwidth_mhz  num_rb)
+% ref.: LTE Physical Layer Overview - Keysight RFMW Sitemap (http://rfmw.em.keysight.com)
 % bandwidth_mhz |   1.4 |   3 |   5 |   10 |   15 |  20
 % --------------+-------+-----+-----+------+------+------
 % num_rb        |   6   |  15 |  25 |   50 |   75 |  100
 % --------------+-------+-----+-----+------+------+------
 % nfft          | 128   | 256 | 512 | 1024 | 1536 | 2048
 
+% set bandwidth list
+bw_list = [1.4 3, 5, 10, 15, 20];
+idx_bw = find(bw_list == bw_mhz, 1);
+if isempty(idx_bw)
+    error('Bandwidth must be one of these: {1.4 3, 5, 10, 15, 20}')
+end
+
 % set basic parameters
 rb_tbl = [6  128;  15  256;  25  512;  50 1024;  75 1536; 100 2048];
-num_rb = rb_tbl(idx_bandwidth, 1);
-nfft = rb_tbl(idx_bandwidth, 2);
+num_rb = rb_tbl(idx_bw, 1);
+nfft = rb_tbl(idx_bw, 2);
 num_subc_rb = 12;                           % number of subcarriers per rb
 num_ofdmsym_slot = 7;                         % number of ofdm symbols per slot
 sample_rate = 15e3*nfft;                    % sampling rate (hz)
-num_cp = nfft * 144 / 2048;                 % number of samples in cyclic prefix
+num_cp = round(nfft * 144 / 2048);                 % number of samples in cyclic prefix
 
 % set subframe parameters
 num_subc_bw = num_rb*num_subc_rb;           % number of subcarriers in bandwidth

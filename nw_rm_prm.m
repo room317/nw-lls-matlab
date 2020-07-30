@@ -31,8 +31,8 @@ E = NL * Qm * [floor(G_ / cc.C) * ones(cc.C - gamma, 1); ceil(G_ / cc.C) * ones(
 
 % simulation setup
 num_data_sym_per_cw = E(1) / Qm;                            % number of symbol per codeword
-num_subfrm = num_data_sym_per_cw / num.num_qamsym_usr;      % number of required subframes
-t_tb = num_subfrm * num.t_subfrm;                           % transfer block length (sec)
+num_slot = num_data_sym_per_cw / num.num_qamsym_usr;      % number of required slots
+t_tb = num_slot * num.t_slot;                           % transfer block length (sec)
 
 % subblock interleaving table setup
 seq_nR = (0 : nR - 1)';

@@ -55,7 +55,7 @@
 %    (1)data       :  d d d d d d d d d d d d d d d d
 %    (0)data       :  d d d d d d d d d d d d d d d d
 
-function [rx_sym_data_subfrm, rx_sym_pilot_subfrm] = otfs_sym_demap_r2(rx_sym_rbs_dd, num, test_option)
+function [rx_sym_data_slot, rx_sym_pilot_slot] = otfs_sym_demap_r2(rx_sym_rbs_dd, num, test_option)
 
 % set power for normalization
 if test_option.otfs_pilot_impulse_pwr_reduction && (test_option.otfs_map_plan == 1 || test_option.otfs_map_plan == 2 || test_option.otfs_map_plan == 3)   % use impulse pilot
@@ -92,7 +92,7 @@ end
 rx_sym_map_basic = circshift(rx_sym_rbs_dd, map_shift);
 
 % demap pilot from user resource block (guard included)
-rx_sym_pilot_subfrm = sqrt(pwr_pilot)*rx_sym_map_basic(1:num.num_delay_pilot_usr, 1:num.num_doppler_pilot_usr);
+rx_sym_pilot_slot = sqrt(pwr_pilot)*rx_sym_map_basic(1:num.num_delay_pilot_usr, 1:num.num_doppler_pilot_usr);
 
 % % demap pilot from user resource block (guard included)
 % if test_option.otfs_pilot_plan == 3
@@ -108,37 +108,37 @@ rx_sym_pilot_subfrm = sqrt(pwr_pilot)*rx_sym_map_basic(1:num.num_delay_pilot_usr
 %     
 %     % demap pilot
 %     idx_pilot_seq = [ceil((length(test_option.pilot_spread_seq)-1)/2), num.num_doppler_guard_usr];
-% %     rx_sym_pilot_subfrm = rx_sym_pilot_despread(idx_pilot_seqlength(test_option.otfs_pilot_spread_seq):length(test_option.otfs_pilot_spread_seq)+size(rx_sym_pilot_spread, 1)-1, :);
-%     rx_sym_pilot_subfrm = sqrt(pwr_pilot)*rx_sym_pilot_despread(idx_pilot_seq(1)+1:idx_pilot_seq(1)+size(rx_sym_pilot_spread, 1), :);
+% %     rx_sym_pilot_slot = rx_sym_pilot_despread(idx_pilot_seqlength(test_option.otfs_pilot_spread_seq):length(test_option.otfs_pilot_spread_seq)+size(rx_sym_pilot_spread, 1)-1, :);
+%     rx_sym_pilot_slot = sqrt(pwr_pilot)*rx_sym_pilot_despread(idx_pilot_seq(1)+1:idx_pilot_seq(1)+size(rx_sym_pilot_spread, 1), :);
 % else
-%     rx_sym_pilot_subfrm = sqrt(pwr_pilot)*rx_sym_map_basic(1:num.num_delay_guard_usr+num.num_delay_pilot_usr, ...
+%     rx_sym_pilot_slot = sqrt(pwr_pilot)*rx_sym_map_basic(1:num.num_delay_guard_usr+num.num_delay_pilot_usr, ...
 %         1:num.num_doppler_guard_usr+num.num_doppler_pilot_usr);
 % end
 
 % assignin('base', 'rx_sym_rbs_dd', rx_sym_rbs_dd)
 % assignin('base', 'rx_sym_map_basic', rx_sym_map_basic)
-% assignin('base', 'rx_sym_pilot_subfrm', rx_sym_pilot_subfrm)
+% assignin('base', 'rx_sym_pilot_slot', rx_sym_pilot_slot)
 % pause
 
 % demap data from user resource block
-rx_sym_data1_subfrm = rx_sym_map_basic(num.num_delay_pilot_usr+1:end, :);
-rx_sym_data2_subfrm = rx_sym_map_basic(1:num.num_delay_pilot_usr, ...
+rx_sym_data1_slot = rx_sym_map_basic(num.num_delay_pilot_usr+1:end, :);
+rx_sym_data2_slot = rx_sym_map_basic(1:num.num_delay_pilot_usr, ...
     num.num_doppler_pilot_usr+1:end);
 
 % serialize data symbols
-rx_sym_data_subfrm = sqrt(pwr_data)*[rx_sym_data1_subfrm(:); rx_sym_data2_subfrm(:)];
+rx_sym_data_slot = sqrt(pwr_data)*[rx_sym_data1_slot(:); rx_sym_data2_slot(:)];
 
 % % dump variables
 % assignin('base', 'rx_sym_rbs', rx_sym_rbs);
 % assignin('base', 'rx_sym_map_basic', rx_sym_map_basic);
-% assignin('base', 'rx_sym_data1_subfrm', rx_sym_data1_subfrm);
-% assignin('base', 'rx_sym_data2_subfrm', rx_sym_data2_subfrm);
-% assignin('base', 'rx_sym_data_subfrm', rx_sym_data_subfrm);
+% assignin('base', 'rx_sym_data1_slot', rx_sym_data1_slot);
+% assignin('base', 'rx_sym_data2_slot', rx_sym_data2_slot);
+% assignin('base', 'rx_sym_data_slot', rx_sym_data_slot);
 
 % % plot results
 % figure, mesh(1:num.num_doppler_usr, 1:num.num_delay_usr, abs(rx_sym_map_basic))   % dd real channel
 % xlabel('Doppler'), ylabel('Delay'), zlabel('Amplitude'), title('Pilot Plan')
-% figure, plot(abs(rx_sym_data_subfrm))
+% figure, plot(abs(rx_sym_data_slot))
 % xlabel('symbols'), ylabel('magnitude'), title('data symbols')
 % pause
 

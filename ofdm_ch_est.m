@@ -4,7 +4,6 @@
 %   - tx_sym_pilot_ndft : for pilot ch. est.
 %   - rx_sym_ndft       : for pilot ch. est.
 
-
 function ch_est_rbs = ofdm_ch_est(tx_sym_rbs, rx_sym_rbs, ch_out_time_serial, num, chest_option, fading_ch, ch_path_gain)
 
 if strcmp(chest_option, 'tf_ltedown') || strcmp(chest_option, 'tf_lteup') || strcmp(chest_option, 'tf_nr')
@@ -65,17 +64,17 @@ elseif strcmp(chest_option, 'real')
     
     % reproduce real channel (time saving)
     len_ch_filter = size(ch_filter_coeff, 2);
-    ch_coeff_mat = zeros(num.nfft, num.nfft, num_ch_path);
-    ch_real_mat_t = zeros(num.nfft, num.nfft, num.num_ofdmsym_usr);
-    ch_real_halfmap_mat_tf = zeros(num.nfft, num.nfft, num.num_ofdmsym_usr);
+    ch_coeff_mat = zeros(num.num_fft, num.num_fft, num_ch_path);
+    ch_real_mat_t = zeros(num.num_fft, num.num_fft, num.num_ofdmsym_usr);
+    ch_real_halfmap_mat_tf = zeros(num.num_fft, num.num_fft, num.num_ofdmsym_usr);
     
     idx_ofdmsym_usr = 1:num.num_ofdmsym_usr;
-    ch_path_gain_reshape = reshape(ch_path_gain, num.nfft+num.num_cp, num.num_ofdmsym_subfrm, num_ch_path);
+    ch_path_gain_reshape = reshape(ch_path_gain, num.num_fft+num.num_cp, num.num_ofdmsym_slot, num_ch_path);
     ch_path_gain_reshape(1:num.num_cp, :, :) = [];
     ch_path_gain_reshape = ch_path_gain_reshape(:, idx_ofdmsym_usr, :);
     for idx_ch_path = 1:num_ch_path
-        ch_coeff_row = circshift([ch_filter_coeff(idx_ch_path, end:-1:1) zeros(1, num.nfft-len_ch_filter)], -len_ch_filter+1);
-        ch_coeff_col = [ch_filter_coeff(idx_ch_path, :) zeros(1, num.nfft-len_ch_filter)];
+        ch_coeff_row = circshift([ch_filter_coeff(idx_ch_path, end:-1:1) zeros(1, num.num_fft-len_ch_filter)], -len_ch_filter+1);
+        ch_coeff_col = [ch_filter_coeff(idx_ch_path, :) zeros(1, num.num_fft-len_ch_filter)];
         ch_coeff_mat(:, :, idx_ch_path) = toeplitz(ch_coeff_col, ch_coeff_row);
     end
     for idx_ch_sym = 1:num.num_ofdmsym_usr
@@ -86,8 +85,8 @@ elseif strcmp(chest_option, 'real')
     end
     ch_real_mat_shift_tf = fftshift(fftshift(ch_real_halfmap_mat_tf, 2), 1);
     ch_real_mat_tf = ...
-        ch_real_mat_shift_tf((num.nfft/2)-(num.num_subc_bw/2)+1:(num.nfft/2)+(num.num_subc_bw/2), ...
-        (num.nfft/2)-(num.num_subc_bw/2)+1:(num.nfft/2)+(num.num_subc_bw/2), :);
+        ch_real_mat_shift_tf((num.num_fft/2)-(num.num_subc_bw/2)+1:(num.num_fft/2)+(num.num_subc_bw/2), ...
+        (num.num_fft/2)-(num.num_subc_bw/2)+1:(num.num_fft/2)+(num.num_subc_bw/2), :);
     
     % extract diagonal elements of real channel
     ch_real_rbs = zeros(num.num_subc_usr, num.num_ofdmsym_usr);
@@ -116,10 +115,10 @@ elseif strcmp(chest_option, 'perfect')
     ch_in_sym_rbs = tx_sym_rbs;
     
     % demap channel output
-    ch_out_ofdmsym = reshape(ch_out_time_serial, num.nfft+num.num_cp, num.num_ofdmsym_subfrm);
-    ch_out_sym_nfft = (1/sqrt(num.nfft)) * fft(ch_out_ofdmsym(num.num_cp+1:end, :), [], 1);
+    ch_out_ofdmsym = reshape(ch_out_time_serial, num.num_fft+num.num_cp, num.num_ofdmsym_slot);
+    ch_out_sym_nfft = (1/sqrt(num.num_fft)) * fft(ch_out_ofdmsym(num.num_cp+1:end, :), [], 1);
     ch_out_sym_nfft_shift = fftshift(ch_out_sym_nfft, 1);
-    ch_out_sym_bw = ch_out_sym_nfft_shift(num.nfft/2-num.num_subc_bw/2+1:num.nfft/2+num.num_subc_bw/2, :);
+    ch_out_sym_bw = ch_out_sym_nfft_shift(num.num_fft/2-num.num_subc_bw/2+1:num.num_fft/2+num.num_subc_bw/2, :);
     ch_out_sym_rbs = ch_out_sym_bw(1:num.num_subc_usr, 1:num.num_ofdmsym_usr);      % temporary
     
     % estimate channels

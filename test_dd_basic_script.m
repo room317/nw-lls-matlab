@@ -28,8 +28,8 @@ for idx_subc = 0 : NumSubc-1
         for idx_sim = 1 : NumSim
             % simulate single packet
 %             ch_est_rmse = test_dd_basic(test_synch, [idx_subc, idx_sym], test_scope, test_seed);
-            ch_est_rmse = test_dd_basic_r1(test_synch, [idx_subc, idx_sym], test_scope, test_seed, 1);
-%             [ch_est_rmse, ~] = test_dd_basic_r2(test_synch, [idx_subc, idx_sym], test_scope, test_seed, 1);
+%             ch_est_rmse = test_dd_basic_r1(test_synch, [idx_subc, idx_sym], test_scope, test_seed, 1);
+            [ch_est_rmse, ~] = test_dd_basic_r2(test_synch, [idx_subc, idx_sym], test_scope, test_seed, 1, NumSym);
 
             % sum channel mse
             total_ch_est_mse = total_ch_est_mse + ch_est_rmse.^2;

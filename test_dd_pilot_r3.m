@@ -22,7 +22,7 @@ num_ofdm_subc = 1024; % 64;
 num_ofdm_sym = 14; % 64;
 num_subc = 600; % 32;
 num_sym = 14; % 32;
-num_pilot_subc = 84; % delay spread axis
+num_pilot_subc = 600; % delay spread axis
 num_pilot_sym = 14;
 
 f_subc = 15e3;
@@ -37,12 +37,12 @@ delay_spread_rms_us = 0.1; %0.1e-6;
 test_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, snr_db, delay_spread_rms_us);
 
 % guard area
-num_pilot_guard_subc = 14; % 20;
+num_pilot_guard_subc = 0; % 14; % 20;
 num_pilot_guard_sym = 0;
 
 % null area
-num_data_null_subc_head = 5; % 1;
-num_data_null_subc_tail = 5; % 5;
+num_data_null_subc_head = 0; % 5; % 1;
+num_data_null_subc_tail = 0; % 5; % 5;
 
 % create a rayleigh fading channel object
 if test_seed >= 0
@@ -99,6 +99,12 @@ if strcmp(test_chest, 'dd')
     num_tx_sym_data1 = [floor((num_subc-num_pilot_subc)/2)-num_data_null_subc_head num_sym];
     num_tx_sym_data2 = [num_pilot_subc num_sym-num_pilot_sym];
     num_tx_sym_data3 = [ceil((num_subc-num_pilot_subc)/2)-num_data_null_subc_tail num_sym];
+    
+%     assignin('base', 'num_tx_sym_data1', num_tx_sym_data1)
+%     assignin('base', 'num_tx_sym_data2', num_tx_sym_data2)
+%     assignin('base', 'num_tx_sym_data3', num_tx_sym_data3)
+%     pause
+    
     tx_sym_data1 = tx_sym_data(1:prod(num_tx_sym_data1));
     tx_sym_data2 = tx_sym_data(prod(num_tx_sym_data1)+1:prod(num_tx_sym_data1)+prod(num_tx_sym_data2));
     tx_sym_data3 = tx_sym_data(prod(num_tx_sym_data1)+prod(num_tx_sym_data2)+1:end);

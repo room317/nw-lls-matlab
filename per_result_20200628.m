@@ -566,6 +566,19 @@ per_case56 = [ ...
   6.0      10000   0.018900
   8.0      10000   0.000200];
 
+% RUNNING CASE: OTFS BW10 FC4000 V3 DS0.1 TDLA MCS8 LEN6120 SIM10000 SNR0 REAL TFEQZF
+per_case57 = [ ...
+  0.0        412   0.973301
+  2.0        813   0.493235
+  4.0       1388   0.288905
+  6.0       2159   0.185734
+  8.0       3138   0.127788
+ 10.0       4777   0.083944
+ 12.0       7870   0.050953
+ 14.0      10000   0.034800
+ 16.0      10000   0.021200
+ 18.0      10000   0.011100];
+
 figure
 semilogy(per_case01(:,1),per_case01(:,3),'-ko'), hold on
 semilogy(per_case02(:,1),per_case02(:,3),'-kx')
@@ -696,4 +709,13 @@ grid minor
 title('OTFS BW10 FC4000 DS0.1 TDLD MCS8 LEN6120 REAL TFEQMMSE')
 xlabel('SNR (dB)'), ylabel('PER')
 legend('V3', 'V120', 'V200', 'V500')
+axis([-1 19 1e-3 1])
+
+figure
+semilogy(per_case53(:,1),per_case53(:,3),'-ko'), hold on
+semilogy(per_case57(:,1),per_case57(:,3),'-kx'), hold off
+grid minor
+title('OTFS BW10 FC4000 V3 DS0.1 TDLA MCS8 LEN6120 REAL')
+xlabel('SNR (dB)'), ylabel('PER')
+legend('MMSE EQ', 'ZF EQ')
 axis([-1 19 1e-3 1])

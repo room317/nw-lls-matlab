@@ -20,9 +20,6 @@ SNRStep = 2;
 ErrorStop = 400;
 ErrorBreak = 0.001;
 
-% set bandwidth list
-bw_list = [1.4 3, 5, 10, 15, 20];
-
 % open files
 list_file = './nw_sim_list.lst';
 result_file = './nw_sim_result.res';
@@ -49,7 +46,8 @@ while 1
     delay_spread_rms_us = nw_parse_prm.delay; % us
     idx_fading = nw_parse_prm.ch;
     snr_db_start = nw_parse_prm.snr;
-    idx_bandwidth = find(bw_list == nw_parse_prm.bw, 1);
+    bw_mhz = nw_parse_prm.bw;
+    scs_khz = nw_parse_prm.scs;
     len_tb_bit = nw_parse_prm.tblen;
     mcs = nw_parse_prm.mcs;
     num_sim = nw_parse_prm.nsim;
@@ -58,7 +56,8 @@ while 1
     waveform = nw_parse_prm.wave;
     
     % set equalization option
-    nw_num = nw_num_prm(idx_bandwidth, waveform, chest_option);
+%     nw_num = nw_num_prm(bw_mhz, waveform, chest_option);
+    nw_num = nw_num_prm_r1(scs_khz, bw_mhz, waveform, chest_option);
     nw_cc = nw_cc_prm(len_tb_bit);
     nw_rm = nw_rm_prm(len_tb_bit, mcs, nw_num, nw_cc);
     nw_sim = nw_sim_prm(len_tb_bit, num_sim, nw_num, nw_cc, nw_rm);
@@ -106,7 +105,7 @@ while 1
             
             % simulate single packet
             if strcmp(waveform, 'ofdm')    % ofdm
-                [pkt_error, tx_papr, ch_mse] = ofdm_single_run_r2(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option, cheq_option, test_option);
+                [pkt_error, tx_papr, ch_mse, sym_err_var] = ofdm_single_run_r2(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option, cheq_option, test_option);
             else                           % otfs
                 [pkt_error, tx_papr, ch_mse, sym_err_var] = otfs_single_run_r4(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option, cheq_option, test_option);
             end

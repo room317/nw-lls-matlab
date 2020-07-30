@@ -8,10 +8,10 @@
 % - rate matching added: 2019.10.22
 % - structure updated: 2019.10.23
 % - rate matching bug fixed: 2019.11.08
-% - subframe buffer fixed: 2019.12.10
+% - slot buffer fixed: 2019.12.10
 % - real channel estimation with single tone pilot added: 2020.02.09
 
-function [pkt_error, tx_papr, ch_mse] = ofdm_single_run_r2(sim, cc, rm, num, snr_db, ch, chest_option, cheq_option, test_option)
+function [pkt_error, tx_papr, ch_mse, sym_err_var] = ofdm_single_run_r2(sim, cc, rm, num, snr_db, ch, chest_option, cheq_option, test_option)
 
 % create turbo encoder/decoder
 turbo_enc = comm.TurboEncoder('TrellisStructure', cc.tc_trellis, ...
@@ -49,7 +49,7 @@ else
 end
 
 % calculate noise variance
-noise_var = (num.num_subc_usr/num.nfft)*(10^((-0.1)*snr_db));
+noise_var = (num.num_subc_usr/num.num_fft)*(10^((-0.1)*snr_db));
 
 % generate bit stream
 tx_bit = randi([0 1], sim.len_tb_bit, 1);
@@ -77,37 +77,37 @@ tx_bit_ratematch = tx_ratematch_r2(tx_bit_enc, rm);
 % modulate bit stream
 tx_sym_serial = qammod(tx_bit_ratematch(:), 2^rm.Qm, 'InputType', 'bit', 'UnitAveragePower', true);
 
-% simulate per subframe
+% simulate per slot
 tx_sym = reshape(tx_sym_serial, num.num_qamsym_usr, []);
 rx_sym = zeros(size(tx_sym));
-tx_papr_subfrm = zeros(1, size(tx_sym, 2));     % for test: papr
-ch_mse_subfrm = zeros(1, size(tx_sym, 2));      % for test: channel mse
-for idx_subfrm = 1 : size(tx_sym, 2)
+tx_papr_slot = zeros(1, size(tx_sym, 2));     % for test: papr
+ch_mse_slot = zeros(1, size(tx_sym, 2));      % for test: channel mse
+for idx_slot = 1 : size(tx_sym, 2)
     
-    % extract subframe data per user
-    tx_sym_data_subfrm = tx_sym(:, idx_subfrm);
+    % extract slot data per user
+    tx_sym_data_slot = tx_sym(:, idx_slot);
     
     % map qam symbols to user physical resource blocks
-    tx_sym_rbs = ofdm_sym_map(tx_sym_data_subfrm, num);
+    tx_sym_rbs = ofdm_sym_map(tx_sym_data_slot, num);
     
     % map user resource blocks to whole bandwidth (temporary)
-    tx_sym_bw = zeros(num.num_subc_bw, num.num_ofdmsym_subfrm);
+    tx_sym_bw = zeros(num.num_subc_bw, num.num_ofdmsym_slot);
     tx_sym_bw(1:size(tx_sym_rbs, 1), 1:size(tx_sym_rbs, 2)) = tx_sym_rbs;
     
     % map bandwidth to the center of fft range
-    tx_sym_nfft_shift = zeros(num.nfft, num.num_ofdmsym_subfrm);
-    tx_sym_nfft_shift((num.nfft/2)-(num.num_subc_bw/2)+1:(num.nfft/2)+(num.num_subc_bw/2), :) = tx_sym_bw;
+    tx_sym_nfft_shift = zeros(num.num_fft, num.num_ofdmsym_slot);
+    tx_sym_nfft_shift((num.num_fft/2)-(num.num_subc_bw/2)+1:(num.num_fft/2)+(num.num_subc_bw/2), :) = tx_sym_bw;
     tx_sym_nfft = fftshift(tx_sym_nfft_shift, 1);
     
     % ofdm modulate
-    tx_ofdmsym = sqrt(num.nfft) * ifft(tx_sym_nfft, [], 1);
+    tx_ofdmsym = sqrt(num.num_fft) * ifft(tx_sym_nfft, [], 1);
     
     % add cp
-    tx_ofdmsym_cp = tx_ofdmsym([num.nfft-num.num_cp+1:num.nfft 1:num.nfft], :);
+    tx_ofdmsym_cp = tx_ofdmsym([num.num_fft-num.num_cp+1:num.num_fft 1:num.num_fft], :);
     
     % test: calculate papr
     if test_option.papr
-        tx_papr_subfrm(1, idx_subfrm) = mean(max(abs(tx_ofdmsym_cp).^2, [], 1)./mean(abs(tx_ofdmsym_cp).^2, 1));
+        tx_papr_slot(1, idx_slot) = mean(max(abs(tx_ofdmsym_cp).^2, [], 1)./mean(abs(tx_ofdmsym_cp).^2, 1));
     end
     
     % serialize
@@ -121,17 +121,17 @@ for idx_subfrm = 1 : size(tx_sym, 2)
 %     rx_ofdmsym_serial = awgn(tx_ofdmsym_serial, snr_db, 'measured');
     
     % reshape
-    rx_ofdmsym_cp = reshape(rx_ofdmsym_serial, num.nfft+num.num_cp, num.num_ofdmsym_subfrm);
+    rx_ofdmsym_cp = reshape(rx_ofdmsym_serial, num.num_fft+num.num_cp, num.num_ofdmsym_slot);
     
     % remove cp
     rx_ofdmsym = rx_ofdmsym_cp(num.num_cp+1:end,:);
     
     % ofdm demodulate
-    rx_sym_nfft = (1/sqrt(num.nfft)) * fft(rx_ofdmsym, [], 1);
+    rx_sym_nfft = (1/sqrt(num.num_fft)) * fft(rx_ofdmsym, [], 1);
     
     % demap symbols in bandwidth from fft range
     rx_sym_nfft_shift = fftshift(rx_sym_nfft, 1);
-    rx_sym_bw = rx_sym_nfft_shift((num.nfft/2)-(num.num_subc_bw/2)+1:(num.nfft/2)+(num.num_subc_bw/2), :);
+    rx_sym_bw = rx_sym_nfft_shift((num.num_fft/2)-(num.num_subc_bw/2)+1:(num.num_fft/2)+(num.num_subc_bw/2), :);
     
     % demap user resource block from whole bandwidth (temporary)
     rx_sym_rbs = rx_sym_bw(1:num.num_subc_usr, 1:num.num_ofdmsym_usr);
@@ -142,18 +142,18 @@ for idx_subfrm = 1 : size(tx_sym, 2)
     % test: calculate channel estimation error
     if test_option.ch_mse
         ch_real_rbs = ofdm_ch_est(tx_sym_rbs, rx_sym_rbs, tx_ofdmsym_faded, num, 'real', fading_ch, ch_path_gain);
-        ch_mse_subfrm(1, idx_subfrm) = mean(abs(ch_real_rbs-ch_est_rbs).^2, 'all');
+        ch_mse_slot(1, idx_slot) = mean(abs(ch_real_rbs-ch_est_rbs).^2, 'all');
     end
     
     % equalize channel in tf-domain
     rx_sym_rbs_eq = ofdm_ch_eq(rx_sym_rbs, ch_est_rbs, noise_var, cheq_option);
     
     % demap data qam symbols
-    rx_sym_data_subfrm = ofdm_sym_demap(rx_sym_rbs_eq, num);
-%     rx_sym_data_subfrm = ofdm_sym_demap(rx_sym_rbs, num);
+    rx_sym_data_slot = ofdm_sym_demap(rx_sym_rbs_eq, num);
+%     rx_sym_data_slot = ofdm_sym_demap(rx_sym_rbs, num);
     
     % buffer qam symbols
-    rx_sym(:, idx_subfrm) = rx_sym_data_subfrm;
+    rx_sym(:, idx_slot) = rx_sym_data_slot;
     
 %     figure
 %     subplot(2, 1, 1), plot(real(tx_sym_rbs(:)), '-b.'), hold on, plot(real(rx_sym_rbs_eq(:)), ':r.'), hold off
@@ -168,6 +168,18 @@ end
 
 % serialize qam symbols
 rx_sym_serial = rx_sym(:);
+
+% compensate channel estimation error variance
+if test_option.sym_err_var
+    sym_err_var = var(tx_sym_serial-rx_sym_serial);
+    % fprintf('noise_var:%6.3f    err_var:%6.3f\n', noise_var, sym_err_var)
+%     figure
+%     subplot(2, 1, 1), plot(real(tx_sym_serial), '-b.'), hold on, plot(real(rx_sym_serial), '-r'), hold off, grid minor
+%     subplot(2, 1, 2), plot(imag(tx_sym_serial), '-b.'), hold on, plot(imag(rx_sym_serial), '-r'), hold off, grid minor
+%     pause
+else
+    sym_err_var = 0;
+end
 
 % compensate channel estimation error variance
 % qam_mse = mean(abs(tx_sym(:)-rx_sym(:)).^2);
@@ -217,14 +229,14 @@ end
 
 % calculate papr
 if test_option.papr
-    tx_papr = mean(tx_papr_subfrm);
+    tx_papr = mean(tx_papr_slot);
 else
     tx_papr = [];
 end
 
 % calculate channel mse
 if test_option.ch_mse
-    ch_mse = mean(ch_mse_subfrm);
+    ch_mse = mean(ch_mse_slot);
 else
     ch_mse = [];
 end
