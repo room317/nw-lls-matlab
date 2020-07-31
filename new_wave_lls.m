@@ -157,7 +157,7 @@ while 1
         
         if test_option.sym_err_var
             mean_sym_err_var = sqrt(sum_sym_err_var / sim_cnt);           % calculate symbol error variance
-            fprintf('   SYM ERR VAR: %6.3f   NOISE VAR: %12.9f', mean_sym_err_var, (nw_num.num_subc_usr/nw_num.nfft)*(10^((-0.1)*snr_db)));
+            fprintf('   SYM ERR VAR: %6.3f   NOISE VAR: %12.9f', mean_sym_err_var, (nw_num.num_subc_usr/nw_num.num_fft)*(10^((-0.1)*snr_db)));
             fprintf(fp2, ' %10.6f', mean_sym_err_var);
         end
         

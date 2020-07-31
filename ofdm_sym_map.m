@@ -1,7 +1,8 @@
 % map qam symbols to user resource blocks
 %  - tx_sym_data_slot: slot data per user
+%  - tx_sym_pilot_slot: for error variance calculation
 
-function tx_sym_rbs = ofdm_sym_map(tx_sym_data_slot, num)
+function [tx_sym_rbs, tx_sym_pilot_slot] = ofdm_sym_map(tx_sym_data_slot, num)
 
 % generate pilot symbols (random sequence for now)
 tx_sym_pilot_slot = 1/sqrt(2)* ...

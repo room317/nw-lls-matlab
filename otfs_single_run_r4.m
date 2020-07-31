@@ -88,6 +88,7 @@ tx_sym_serial = qammod(tx_bit_ratematch(:), 2^rm.Qm, 'InputType', 'bit', 'UnitAv
 % simulate per slot
 tx_sym = reshape(tx_sym_serial, num.num_qamsym_usr, []);
 rx_sym = zeros(size(tx_sym));
+sym_pilot_error = zeros((num.num_delay_pilot_usr-2*num.num_delay_guard_usr)*(num.num_doppler_pilot_usr-2*num.num_doppler_guard_usr), size(tx_sym, 2));
 tx_papr_slot = zeros(1, size(tx_sym, 2));     % for test: papr
 ch_mse_slot = zeros(1, size(tx_sym, 2));      % for test: channel mse
 for idx_slot = 1 : size(tx_sym, 2)
@@ -97,7 +98,7 @@ for idx_slot = 1 : size(tx_sym, 2)
     
     % map data and pilot symbols
     if strcmp(chest_option, 'dd_tone')
-        tx_sym_rbs_dd = otfs_sym_map_r2(tx_sym_data_slot, num, test_option);
+        [tx_sym_rbs_dd, tx_sym_pilot_slot] = otfs_sym_map_r2(tx_sym_data_slot, num, test_option);
     else
         tx_sym_rbs_dd = reshape(tx_sym_data_slot, num.num_delay_usr, []);
     end
@@ -313,40 +314,58 @@ for idx_slot = 1 : size(tx_sym, 2)
     
     % demap data qam symbols
     if strcmp(chest_option, 'dd_tone')
-        [rx_sym_data_slot, ~] = otfs_sym_demap_r2(rx_sym_rbs_dd_eq, num, test_option);
+        [rx_sym_data_slot, rx_sym_pilot_slot] = otfs_sym_demap_r2(rx_sym_rbs_dd_eq, num, test_option);
     else
         rx_sym_data_slot = reshape(rx_sym_rbs_dd_eq, num.num_delay_usr, []);
     end
     
     % buffer qam symbols
     rx_sym(:, idx_slot) = rx_sym_data_slot(:);
+    
+    % buffer pilot errors
+    tx_sym_pilot_slot_guard_removed = tx_sym_pilot_slot(num.num_delay_guard_usr+1:end-num.num_delay_guard_usr, num.num_doppler_guard_usr+1:end-num.num_doppler_guard_usr);
+    rx_sym_pilot_slot_guard_removed = rx_sym_pilot_slot(num.num_delay_guard_usr+1:end-num.num_delay_guard_usr, num.num_doppler_guard_usr+1:end-num.num_doppler_guard_usr);
+    sym_pilot_error(:, idx_slot) = rx_sym_pilot_slot_guard_removed(:)-tx_sym_pilot_slot_guard_removed(:);   % for error variance calculation
+    
+%     fprintf('tx_data_pwr:%6.3f    rx_data_pwr:%6.3f    tx_pilot_pwr:%6.3f    rx_pilot_pwr:%6.3f\n', std(tx_sym(:)), std(rx_sym(:)), std(tx_sym_pilot_slot_guard_removed(:)), std(rx_sym_pilot_slot_guard_removed(:)))
+%     fprintf('tx_data_pwr:%6.3f    rx_data_pwr:%6.3f    tx_pilot_pwr:%6.3f    rx_pilot_pwr:%6.3f\n', mean(abs(tx_sym(:)).^2), mean(abs(rx_sym(:)).^2), mean(abs(tx_sym_pilot_slot_guard_removed(:)).^2), mean(abs(rx_sym_pilot_slot_guard_removed(:)).^2))
+%     fprintf('data_std:%6.3f    pilot_std:%6.3f\n', mean(abs(tx_sym(:)-rx_sym(:)).^2), mean(abs(tx_sym_pilot_slot_guard_removed(:)-rx_sym_pilot_slot_guard_removed(:)).^2))
+%     fprintf('data_std:%6.3f    pilot_std:%6.3f\n', std(tx_sym(:)-rx_sym(:)), std(tx_sym_pilot_slot_guard_removed(:)-rx_sym_pilot_slot_guard_removed(:)))
+%     pause
+    
 end
 
 % serialize qam symbols
 rx_sym_serial = rx_sym(:);
 
 % compensate channel estimation error variance
-if test_option.sym_err_var
-    sym_err_var = var(tx_sym_serial-rx_sym_serial);
-    % fprintf('noise_var:%6.3f    err_var:%6.3f\n', noise_var, sym_err_var)
-%     figure
-%     subplot(2, 1, 1), plot(real(tx_sym_serial), '-b.'), hold on, plot(real(rx_sym_serial), '-r'), hold off, grid minor
-%     subplot(2, 1, 2), plot(imag(tx_sym_serial), '-b.'), hold on, plot(imag(rx_sym_serial), '-r'), hold off, grid minor
-%     pause
-else
-    sym_err_var = 0;
-end
-
+% qam_mse = mean(abs(tx_sym(:)-rx_sym(:)).^2);
+% error_var = var(sym_pilot_error(:));    % cannot be used (pilot syms have less error than data syms)
+% error_var = var(tx_sym_serial-rx_sym_serial);
 if strcmp(chest_option, 'tf_ltedown') || strcmp(chest_option, 'tf_nr')
     error_var = noise_var + 0.12;
 elseif strcmp(chest_option, 'tf_lteup')
     error_var = noise_var + 0.27;
 elseif strcmp(chest_option, 'real')
     error_var = noise_var + 0.08;
-elseif strcmp(chest_option, 'real') && (test_option.otfs_map_plan == 4 || test_option.otfs_map_plan == 5)
+elseif strcmp(chest_option, 'dd_tone') && (test_option.otfs_map_plan == 1 || test_option.otfs_map_plan == 2 || test_option.otfs_map_plan == 3)
+    error_var = noise_var + 0.1;
+elseif strcmp(chest_option, 'dd_tone') && (test_option.otfs_map_plan == 4 || test_option.otfs_map_plan == 5)
     error_var = noise_var + 4.5;
 else
     error_var = noise_var;
+end
+
+% test channel estimation error variance
+if test_option.sym_err_var
+    sym_err_var = var(tx_sym_serial-rx_sym_serial);
+%     fprintf('noise_var:%6.3f    sym_err_var:%6.3f    calc_err_var:%6.3f\n', noise_var, sym_err_var, error_var)
+%     figure
+%     subplot(2, 1, 1), plot(real(tx_sym_serial), '-b.'), hold on, plot(real(rx_sym_serial), '-r'), hold off, grid minor
+%     subplot(2, 1, 2), plot(imag(tx_sym_serial), '-b.'), hold on, plot(imag(rx_sym_serial), '-r'), hold off, grid minor
+%     pause
+else
+    sym_err_var = 0;
 end
 
 % demap the qam symbols

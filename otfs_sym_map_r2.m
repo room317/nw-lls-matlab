@@ -55,7 +55,7 @@
 %    (1)data       :  d d d d d d d d d d d d d d d d
 %    (0)data       :  d d d d d d d d d d d d d d d d
 
-function tx_sym_rbs_dd = otfs_sym_map_r2(tx_sym_data_slot, num, test_option)
+function [tx_sym_rbs_dd, tx_sym_pilot_slot] = otfs_sym_map_r2(tx_sym_data_slot, num, test_option)
 
 % set normalized data and pilot symbol power
 if test_option.otfs_map_plan == 1 || test_option.otfs_map_plan == 2 || test_option.otfs_map_plan == 3   % use impulse pilot
