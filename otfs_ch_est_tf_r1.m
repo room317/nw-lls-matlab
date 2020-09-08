@@ -14,7 +14,7 @@ if strcmp(chest_option, 'real')
     ch_real_halfmap_mat_tf = zeros(num.num_fft, num.num_fft, num.num_doppler_usr);
     
     idx_doppler_usr = 1:num.num_doppler_usr;
-    ch_path_gain_reshape = reshape(ch_path_gain, num.num_fft+num.num_cp, num.num_ofdmsym_slot, num_ch_path);
+    ch_path_gain_reshape = reshape(ch_path_gain, num.num_fft+num.num_cp, num.num_ofdmsym_usr, num_ch_path);
     ch_path_gain_reshape(1:num.num_cp, :, :) = [];
     ch_path_gain_reshape = ch_path_gain_reshape(:, idx_doppler_usr, :);
     for idx_ch_path = 1:num_ch_path
@@ -60,7 +60,7 @@ elseif strcmp(chest_option, 'perfect')
     ch_in_sym_rbs_sfft = tx_sym_rbs_tf;
     
     % demap channel output
-    ch_out_ofdmsym = reshape(ch_out_time_serial, num.num_fft+num.num_cp, num.num_ofdmsym_slot);
+    ch_out_ofdmsym = reshape(ch_out_time_serial, num.num_fft+num.num_cp, num.num_ofdmsym_usr);
     ch_out_sym_nfft = (1/sqrt(num.num_fft)) * fft(ch_out_ofdmsym(num.num_cp+1:end, :), [], 1);
     ch_out_sym_nfft_shift = fftshift(ch_out_sym_nfft, 1);
     ch_out_sym_bw = ch_out_sym_nfft_shift(num.num_fft/2-num.num_subc_bw/2+1:num.num_fft/2+num.num_subc_bw/2, :);
@@ -87,11 +87,11 @@ end
 % 
 % % plot
 % figure
-% subplot(1, 2, 1), mesh(1:num.num_ofdmsym_per_slot, 1:num.ndft, real(ch_est_dd_ndft_raw)), title('real(raw channel estimation) in dd-domain')
-% subplot(1, 2, 2), mesh(1:num.num_ofdmsym_per_slot, 1:num.ndft, imag(ch_est_dd_ndft_raw)), title('imag(raw channel estimation) in dd-domain')
+% subplot(1, 2, 1), mesh(1:num.num_ofdmsym_per_usrfrm, 1:num.ndft, real(ch_est_dd_ndft_raw)), title('real(raw channel estimation) in dd-domain')
+% subplot(1, 2, 2), mesh(1:num.num_ofdmsym_per_usrfrm, 1:num.ndft, imag(ch_est_dd_ndft_raw)), title('imag(raw channel estimation) in dd-domain')
 % figure
-% subplot(1, 2, 1), mesh(1:num.num_ofdmsym_per_slot, 1:num.ndft, real(ch_est_dd_ndft_smooth)), title('real(smoothed channel estimation) in dd-domain')
-% subplot(1, 2, 2), mesh(1:num.num_ofdmsym_per_slot, 1:num.ndft, imag(ch_est_dd_ndft_smooth)), title('imag(smoothed channel estimation) in dd-domain')
+% subplot(1, 2, 1), mesh(1:num.num_ofdmsym_per_usrfrm, 1:num.ndft, real(ch_est_dd_ndft_smooth)), title('real(smoothed channel estimation) in dd-domain')
+% subplot(1, 2, 2), mesh(1:num.num_ofdmsym_per_usrfrm, 1:num.ndft, imag(ch_est_dd_ndft_smooth)), title('imag(smoothed channel estimation) in dd-domain')
 % pause
 
 end

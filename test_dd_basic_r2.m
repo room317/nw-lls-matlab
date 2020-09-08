@@ -199,7 +199,7 @@ rx_sig_cfo = rx_sig(:) .* exp(-1i*2*pi*cfo_vec);
 
 % synchronization
 rx_sig_synch = circshift(rx_sig_cfo, -len_cp-test_synch);
-    
+
 % reshape
 rx_ofdm_sym_cp = reshape(rx_sig_synch, num_ofdm_subc+len_cp, []);
 

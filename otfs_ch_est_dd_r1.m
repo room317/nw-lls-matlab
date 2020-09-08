@@ -17,7 +17,7 @@
 function ch_est_rbs_dd = otfs_ch_est_dd_r1(rx_sym_rbs_dd, num, test_option)
 
 % demap pilot symbols
-[~, rx_sym_pilot_slot] = otfs_sym_demap_r2(rx_sym_rbs_dd, num, test_option);
+[~, rx_sym_pilot_usrfrm] = otfs_sym_demap_r2(rx_sym_rbs_dd, num, test_option);
 
 % set resource block center index
 idx_delay_usr = floor(num.num_delay_usr/2)+1;
@@ -27,7 +27,7 @@ idx_doppler_usr = floor(num.num_doppler_usr/2)+1;
 if test_option.otfs_map_plan == 1 || test_option.otfs_map_plan == 2 || test_option.otfs_map_plan == 3   % use impulse pilot
     
     % remove guard
-    rx_sym_pilot_guard_removed = rx_sym_pilot_slot(num.num_delay_guard_usr+1:end-num.num_delay_guard_usr, num.num_doppler_guard_usr+1:end-num.num_doppler_guard_usr);
+    rx_sym_pilot_guard_removed = rx_sym_pilot_usrfrm(num.num_delay_guard_usr+1:end-num.num_delay_guard_usr, num.num_doppler_guard_usr+1:end-num.num_doppler_guard_usr);
     
     % find dd-domain channel impulse response
     rx_sym_pilot_imp_resp = rx_sym_pilot_guard_removed;
@@ -67,10 +67,10 @@ if test_option.otfs_map_plan == 1 || test_option.otfs_map_plan == 2 || test_opti
     ch_est_rbs_interp_edge = circshift(ch_est_rbs_interp, [-ceil(num.num_delay_usr/2), -ceil(num.num_doppler_usr/2)]);
     % ch_est_rbs_interpl_edge = circshift(ch_est_rbs_raw_cntr, [-ceil(num.num_delay_usr/2), -ceil(num.num_doppler_usr/2)]);
     
-elseif test_option.otfs_map_plan == 4       % use pilot sequence (guard removing -> despreading -> interpolating)
+elseif test_option.otfs_map_plan == 4       % use zadoff-chu pilot sequence (guard removing -> despreading -> interpolating)
     
     % remove guard
-    rx_sym_pilot_guard_removed = rx_sym_pilot_slot(num.num_delay_guard_usr+1:end-num.num_delay_guard_usr, num.num_doppler_guard_usr+1:end-num.num_doppler_guard_usr);
+    rx_sym_pilot_guard_removed = rx_sym_pilot_usrfrm(num.num_delay_guard_usr+1:end-num.num_delay_guard_usr, num.num_doppler_guard_usr+1:end-num.num_doppler_guard_usr);
     
     % despread pilot
     rx_sym_pilot_despread = zeros(size(rx_sym_pilot_guard_removed)+[length(test_option.otfs_pilot_spread_seq)-1, 0]);
@@ -81,7 +81,7 @@ elseif test_option.otfs_map_plan == 4       % use pilot sequence (guard removing
     % find dd-domain channel impulse response
     rx_sym_pilot_imp_resp = rx_sym_pilot_despread;
     
-%     assignin('base', 'rx_sym_pilot_slot', rx_sym_pilot_slot)
+%     assignin('base', 'rx_sym_pilot_usrfrm', rx_sym_pilot_usrfrm)
 %     assignin('base', 'rx_sym_pilot_guard_removed', rx_sym_pilot_guard_removed)
 %     assignin('base', 'rx_sym_pilot_despread', rx_sym_pilot_despread)
 %     assignin('base', 'rx_sym_pilot_imp_resp', rx_sym_pilot_imp_resp)
@@ -89,8 +89,8 @@ elseif test_option.otfs_map_plan == 4       % use pilot sequence (guard removing
     
 %     % demap pilot
 %     idx_pilot_seq = [ceil((length(test_option.pilot_spread_seq)-1)/2), num.num_doppler_guard_usr];
-% %     rx_sym_pilot_slot = rx_sym_pilot_despread(idx_pilot_seqlength(test_option.otfs_pilot_spread_seq):length(test_option.otfs_pilot_spread_seq)+size(rx_sym_pilot_spread, 1)-1, :);
-%     rx_sym_pilot_slot = sqrt(pwr_pilot)*rx_sym_pilot_despread(idx_pilot_seq(1)+1:idx_pilot_seq(1)+size(rx_sym_pilot_spread, 1), :);
+% %     rx_sym_pilot_usrfrm = rx_sym_pilot_despread(idx_pilot_seqlength(test_option.otfs_pilot_spread_seq):length(test_option.otfs_pilot_spread_seq)+size(rx_sym_pilot_spread, 1)-1, :);
+%     rx_sym_pilot_usrfrm = sqrt(pwr_pilot)*rx_sym_pilot_despread(idx_pilot_seq(1)+1:idx_pilot_seq(1)+size(rx_sym_pilot_spread, 1), :);
     
     % set pilot resource center index
     idx_delay_pilot_usr = floor(length(test_option.otfs_pilot_spread_seq)/2)+floor((num.num_delay_pilot_usr-2*num.num_delay_guard_usr)/2)+1;
@@ -129,10 +129,10 @@ elseif test_option.otfs_map_plan == 4       % use pilot sequence (guard removing
     ch_est_rbs_interp_edge = circshift(ch_est_rbs_interp, [-ceil(num.num_delay_usr/2), -ceil(num.num_doppler_usr/2)]);
     % ch_est_rbs_interpl_edge = circshift(ch_est_rbs_raw_cntr, [-ceil(num.num_delay_usr/2), -ceil(num.num_doppler_usr/2)]);
     
-elseif test_option.otfs_map_plan == 5       % use pilot sequence (guard removing -> despreading -> pruning -> interpolating)
+elseif test_option.otfs_map_plan == 5       % use zadoff-chu pilot sequence (guard removing -> despreading -> pruning -> interpolating)
     
     % remove guard
-    rx_sym_pilot_guard_removed = rx_sym_pilot_slot(num.num_delay_guard_usr+1:end-num.num_delay_guard_usr, num.num_doppler_guard_usr+1:end-num.num_doppler_guard_usr);
+    rx_sym_pilot_guard_removed = rx_sym_pilot_usrfrm(num.num_delay_guard_usr+1:end-num.num_delay_guard_usr, num.num_doppler_guard_usr+1:end-num.num_doppler_guard_usr);
     
     % despread pilot
     rx_sym_pilot_despread = zeros(size(rx_sym_pilot_guard_removed)+[length(test_option.otfs_pilot_spread_seq)-1, 0]);
@@ -146,8 +146,8 @@ elseif test_option.otfs_map_plan == 5       % use pilot sequence (guard removing
     
 %     % demap pilot
 %     idx_pilot_seq = [ceil((length(test_option.pilot_spread_seq)-1)/2), num.num_doppler_guard_usr];
-% %     rx_sym_pilot_slot = rx_sym_pilot_despread(idx_pilot_seqlength(test_option.otfs_pilot_spread_seq):length(test_option.otfs_pilot_spread_seq)+size(rx_sym_pilot_spread, 1)-1, :);
-%     rx_sym_pilot_slot = sqrt(pwr_pilot)*rx_sym_pilot_despread(idx_pilot_seq(1)+1:idx_pilot_seq(1)+size(rx_sym_pilot_spread, 1), :);
+% %     rx_sym_pilot_usrfrm = rx_sym_pilot_despread(idx_pilot_seqlength(test_option.otfs_pilot_spread_seq):length(test_option.otfs_pilot_spread_seq)+size(rx_sym_pilot_spread, 1)-1, :);
+%     rx_sym_pilot_usrfrm = sqrt(pwr_pilot)*rx_sym_pilot_despread(idx_pilot_seq(1)+1:idx_pilot_seq(1)+size(rx_sym_pilot_spread, 1), :);
     
     % set pilot resource center index
     idx_delay_pilot_usr = floor((num.num_delay_pilot_usr-2*num.num_delay_guard_usr)/2)+1;
@@ -186,10 +186,10 @@ elseif test_option.otfs_map_plan == 5       % use pilot sequence (guard removing
     ch_est_rbs_interp_edge = circshift(ch_est_rbs_interp, [-ceil(num.num_delay_usr/2), -ceil(num.num_doppler_usr/2)]);
     % ch_est_rbs_interpl_edge = circshift(ch_est_rbs_raw_cntr, [-ceil(num.num_delay_usr/2), -ceil(num.num_doppler_usr/2)]);
     
-elseif test_option.otfs_map_plan == 6       % use pilot sequence (ones: generate toeplitz pilot matrix -> pseudo-inverse)
+elseif test_option.otfs_map_plan == 6       % use random pilot sequence (generate toeplitz pilot matrix -> pseudo-inverse)
     
     % generate pilot column
-    pwr_pilot = num.num_delay_pilot_usr*num.num_doppler_pilot_usr/length(test_option.otfs_pilot_spread_seq);
+    pwr_pilot = num.num_delay_pilot_usr*num.num_doppler_pilot_usr/length(test_option.otfs_pilot_seq_ones);
     idx_delay_pilot_usr = floor(num.num_delay_pilot_usr/2)+1;
     tx_sym_pilot_col = zeros(num.num_delay_usr, 1);
     tx_sym_pilot_col(idx_delay_pilot_usr-ceil(length(test_option.otfs_pilot_seq_ones)/2)+1: ...
@@ -201,12 +201,12 @@ elseif test_option.otfs_map_plan == 6       % use pilot sequence (ones: generate
     map_shift = [idx_delay_usr-idx_delay_pilot_usr, 0];
     tx_sym_pilot_col_ctr = circshift(tx_sym_pilot_col, map_shift);
     
-    % generate toeplitz pilot matrix
+    % generate toeplitz pilot matrix (toeplitz channel <-> toeplitz tx)
     pilot_circ_mat = toeplitz(tx_sym_pilot_col_ctr, circshift(flipud(tx_sym_pilot_col_ctr), 1));
     pilot_circ_mat_inv = pinv(pilot_circ_mat);
     
     % remove guard
-    rx_sym_pilot_guard_removed = rx_sym_pilot_slot(num.num_delay_guard_usr+1:end-num.num_delay_guard_usr, num.num_doppler_guard_usr+1:end-num.num_doppler_guard_usr);
+    rx_sym_pilot_guard_removed = rx_sym_pilot_usrfrm(num.num_delay_guard_usr+1:end-num.num_delay_guard_usr, num.num_doppler_guard_usr+1:end-num.num_doppler_guard_usr);
     
     % set pilot resource center index
     idx_delay_pilot_usr = floor((num.num_delay_pilot_usr-2*num.num_delay_guard_usr)/2)+1;
@@ -245,11 +245,24 @@ elseif test_option.otfs_map_plan == 6       % use pilot sequence (ones: generate
     ch_est_rbs_interp_edge = pilot_circ_mat_inv*circshift(rx_sym_pilot_rbs_interp, [0 idx_doppler_usr-1]);
 %     ch_est_rbs_interp_edge = pilot_circ_mat_inv*circshift(rx_sym_pilot_rbs_cntr, [0 idx_doppler_usr-1]);
     
+%     assignin('base', 'tx_sym_pilot_col', tx_sym_pilot_col)
+%     assignin('base', 'tx_sym_pilot_col_ctr', tx_sym_pilot_col_ctr)
+%     assignin('base', 'pilot_circ_mat', pilot_circ_mat)
+%     assignin('base', 'pilot_circ_mat_inv', pilot_circ_mat_inv)
+%     assignin('base', 'rx_sym_rbs_dd', rx_sym_rbs_dd)
+%     assignin('base', 'rx_sym_pilot_usrfrm', rx_sym_pilot_usrfrm)
+%     assignin('base', 'rx_sym_pilot_guard_removed', rx_sym_pilot_guard_removed)
+%     assignin('base', 'rx_sym_pilot_rbs', rx_sym_pilot_rbs)
+%     assignin('base', 'rx_sym_pilot_rbs_cntr', rx_sym_pilot_rbs_cntr)
+%     assignin('base', 'rx_sym_pilot_rbs_interp', rx_sym_pilot_rbs_interp)
+%     assignin('base', 'ch_est_rbs_interp_edge', ch_est_rbs_interp_edge)
+%     pause
+    
 else
     error('''otfs_map_plan'' must be one of these: {1, 2, 3, 4, 5, 6}')
 end
 
-% output
+% output (interpolate)
 if test_option.ch_edge_interp
     
     % 2d inverse sfft for channel transformation
@@ -278,7 +291,7 @@ end
 % assignin('base', 'idx_delay_pilot_usr', idx_delay_pilot_usr)
 % assignin('base', 'idx_doppler_pilot_usr', idx_doppler_pilot_usr)
 % assignin('base', 'rx_sym_rbs_dd', rx_sym_rbs_dd)
-% assignin('base', 'rx_sym_pilot_slot', rx_sym_pilot_slot)
+% assignin('base', 'rx_sym_pilot_usrfrm', rx_sym_pilot_usrfrm)
 % assignin('base', 'rx_sym_pilot_guard_removed', rx_sym_pilot_guard_removed)
 % assignin('base', 'rx_sym_pilot_despread', rx_sym_pilot_despread)
 % assignin('base', 'rx_sym_pilot_imp_resp', rx_sym_pilot_imp_resp)

@@ -1,4 +1,4 @@
-function nw_num = nw_num_prm_r1(scs_khz, bw_mhz, waveform, chest_option)
+function nw_num = nw_num_prm_r1(scs_khz, bw_mhz, num_slot, waveform, chest_option)
 
 % timing parameter reference
 % 1 frame = 10 ms
@@ -46,30 +46,31 @@ num_fft = 2^ceil(log2(num_subc_bw));        % fft size
 sample_rate = scs_khz*1e3*num_fft;          % sampling rate (hz)
 num_cp = round(num_fft*144/2048);           % number of samples in cyclic prefix
 num_ofdmsym_slot = 14;                      % number of ofdm symbols per slot
+num_ofdmsym = num_ofdmsym_slot*num_slot;    % number of ofdm symbols
 
 % set user parameters (full span, prb_size: 12*14)
-num_rb_usr = num_rb; % 3                    % number of resource blocks per user
-num_subc_usr = num_rb_usr*num_subc_rb;      % number of subcarriers per user
-num_ofdmsym_usr = num_ofdmsym_slot;         % number of ofdm symbols per user (slot-based)
+num_rb_usr = num_rb; % 3                            % number of resource blocks per user
+num_slot_usr = num_slot;                            % number of slots per user
+num_subc_usr = num_rb_usr*num_subc_rb;              % number of subcarriers per user
+num_ofdmsym_usr = num_ofdmsym_slot*num_slot_usr;    % number of ofdm symbols per user (slot-based)
 
 % set index parameters
 if strcmp(waveform, 'ofdm')    % ofdm
     
     % set pilot index parameters
-    if strcmp(chest_option, 'tf_lteup') || strcmp(chest_option, 'tf_ltedown') || strcmp(chest_option, 'tf_nr')
-        if num_ofdmsym_usr == 14 && strcmp(chest_option, 'tf_lteup')        % tf-domain pilots (some symbols for pilots)
-            idx_ofdmsym_pilot_usr = [4 11];                                 % pilot symbol index (should be scalar or vector, all elements should be between 1 and 14)
-            idx_subc_pilot_usr = repmat((1:num_subc_usr)', 1, length(idx_ofdmsym_pilot_usr));
-        elseif num_ofdmsym_usr == 14 && strcmp(chest_option, 'tf_ltedown')  % tf-domain pilots (some symbols for pilots)
-            idx_ofdmsym_pilot_usr = [1 5 8 12];                             % pilot symbol index (should be scalar or vector, all elements should be between 1 and 14)
-            idx_subc_pilot_usr = [(6:6:num_subc_usr)', (3:6:num_subc_usr)', (6:6:num_subc_usr)', (3:6:num_subc_usr)'];
-        elseif num_ofdmsym_usr == 14 && strcmp(chest_option, 'tf_nr')       % tf-domain pilots (some symbols for pilots)
-            idx_ofdmsym_pilot_usr = [3 6 9 12];                             % pilot symbol index (should be scalar or vector, all elements should be between 1 and 14)
-            idx_subc_pilot_usr = [(2:2:num_subc_usr)', (2:2:num_subc_usr)', (2:2:num_subc_usr)', (2:2:num_subc_usr)'];
-        else
-            error('There should be 14 ofdm symbols in a user block.')
-        end
-    else	% whole resources for data (real, perfect)
+    if strcmp(chest_option, 'tf_lteup')                                 % tf-domain pilots (some symbols for pilots)
+%         idx_ofdmsym_pilot_usr = repmat([4 11], 1, num_slot);            % pilot symbol index (should be scalar or vector)
+        idx_ofdmsym_pilot_usr = reshape([4; 11]+(0:num_slot_usr-1)*num_ofdmsym_slot, 1, []);    % pilot symbol index (should be scalar or vector)
+        idx_subc_pilot_usr = repmat((1:num_subc_usr)', 1, length(idx_ofdmsym_pilot_usr));
+    elseif strcmp(chest_option, 'tf_ltedown')                           % tf-domain pilots (some symbols for pilots)
+%         idx_ofdmsym_pilot_usr = repmat([1 5 8 12], 1, num_slot);        % pilot symbol index (should be scalar or vector)
+        idx_ofdmsym_pilot_usr = reshape([1; 5; 8; 12]+(0:num_slot_usr-1)*num_ofdmsym_slot, 1, []);    % pilot symbol index (should be scalar or vector)
+        idx_subc_pilot_usr = repmat([(6:6:num_subc_usr)', (3:6:num_subc_usr)', (6:6:num_subc_usr)', (3:6:num_subc_usr)'], 1, num_slot_usr);
+    elseif strcmp(chest_option, 'tf_nr')                                % tf-domain pilots (some symbols for pilots)
+%         idx_ofdmsym_pilot_usr = repmat([3 6 9 12], 1, num_slot);        % pilot symbol index (should be scalar or vector)
+        idx_ofdmsym_pilot_usr = reshape([3; 6; 9; 12]+(0:num_slot_usr-1)*num_ofdmsym_slot, 1, []);    % pilot symbol index (should be scalar or vector)
+        idx_subc_pilot_usr = repmat([(2:2:num_subc_usr)', (2:2:num_subc_usr)', (2:2:num_subc_usr)', (2:2:num_subc_usr)'], 1, num_slot_usr);
+    else    % whole resources for data (real, perfect)
         idx_ofdmsym_pilot_usr = [];
         idx_subc_pilot_usr = [];
     end
@@ -77,12 +78,10 @@ if strcmp(waveform, 'ofdm')    % ofdm
     num_subc_pilot_usr = size(idx_subc_pilot_usr, 1);           % number of pilot subcarriers in 1 ofdm symbol with pilots
     
     % set data index parameter
-    idx_ofdmsym_data_usr = 1:num_ofdmsym_usr;
-    idx_ofdmsym_data_usr(idx_ofdmsym_pilot_usr) = [];
+    idx_ofdmsym_data_usr = setxor(1:num_ofdmsym_usr, idx_ofdmsym_pilot_usr);
     idx_subc_data_usr = zeros(num_subc_usr-num_subc_pilot_usr, num_ofdmsym_pilot_usr);
     for i = 1:num_ofdmsym_pilot_usr
-        tmp_idx_subc_data_usr = (1:num_subc_usr)';
-        tmp_idx_subc_data_usr(idx_subc_pilot_usr(:, i)) = [];
+        tmp_idx_subc_data_usr = setxor((1:num_subc_usr)', idx_subc_pilot_usr(:, i));
         idx_subc_data_usr(:, i) = tmp_idx_subc_data_usr;
     end
     num_ofdmsym_data_usr = length(idx_ofdmsym_data_usr);        % number of ofdm symbols without pilots (all data subcarrier)
@@ -111,10 +110,10 @@ else
         % otfs pilot setup
         %   - num. otfs pilot(including guard) qam symbols = num. ofdm pilot qam symbols
         %   ex) 600*2 and 86*14
-        num_doppler_pilot_usr = 14;                     % number of doppler grids with pilots
-        num_delay_pilot_usr = 86;                       % number of delay grids with pilots
+        num_doppler_pilot_usr = num_ofdmsym_usr; % 14;                     % number of doppler grids with pilots
+        num_delay_pilot_usr = floor(num_subc_bw*(1/num_ofdmsym_slot))*2; % 86;                       % number of delay grids with pilots
         num_doppler_guard_usr = 0;                      % number of doppler grids for guard (set 0 for full-span pilot)
-        num_delay_guard_usr = 10;                       % number of delay grids for guard (set even number)
+        num_delay_guard_usr = floor(num_delay_pilot_usr/8); % 10;          % number of delay grids for guard (set even number)
     else
         num_doppler_pilot_usr = 0;
         num_delay_pilot_usr = 0;
@@ -140,9 +139,8 @@ end
 
 % set timing parameters
 %   - len_frame = len_rb_sym_user * (nfft + num_cp);
-%   - tti = (length of 1 symbol + CP) * number of symbol * length of symbol
-tti = (num_fft + num_cp) * num_ofdmsym_slot / sample_rate;   % transmission time interval (sec)
-t_slot = tti;                                             % slot length (sec)
+%   - t_usrfrm = (length of 1 symbol + CP) * number of symbol * length of symbol
+t_usrfrm = (num_fft + num_cp) * num_ofdmsym / sample_rate;   % transmission time interval (sec)
 
 % output
 % nw_num.nfft = nfft;
@@ -167,8 +165,9 @@ nw_num.sample_rate = sample_rate;
 nw_num.num_cp = num_cp;
 nw_num.num_subc_bw = num_subc_bw;                   % updated
 nw_num.num_ofdmsym_slot = num_ofdmsym_slot;
+nw_num.num_ofdmsym = num_ofdmsym;
 nw_num.num_qamsym_usr = num_qamsym_usr;
-nw_num.t_slot = t_slot;
+nw_num.t_usrfrm = t_usrfrm;
 
 nw_num.num_subc_usr = num_subc_usr;
 nw_num.num_ofdmsym_usr = num_ofdmsym_usr;

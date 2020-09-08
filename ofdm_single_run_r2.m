@@ -10,6 +10,7 @@
 % - rate matching bug fixed: 2019.11.08
 % - slot buffer fixed: 2019.12.10
 % - real channel estimation with single tone pilot added: 2020.02.09
+% - slot-based to user-frame-based simulation (user frame = multiple slots)
 
 function [pkt_error, tx_papr, ch_mse, sym_err_var] = ofdm_single_run_r2(sim, cc, rm, num, snr_db, ch, chest_option, cheq_option, test_option)
 
@@ -77,26 +78,26 @@ tx_bit_ratematch = tx_ratematch_r2(tx_bit_enc, rm);
 % modulate bit stream
 tx_sym_serial = qammod(tx_bit_ratematch(:), 2^rm.Qm, 'InputType', 'bit', 'UnitAveragePower', true);
 
-% simulate per slot
+% simulate per user frame (multiple slots per user frame)
 tx_sym = reshape(tx_sym_serial, num.num_qamsym_usr, []);
 rx_sym = zeros(size(tx_sym));
 sym_pilot_error = zeros(num.num_subc_pilot_usr*num.num_ofdmsym_pilot_usr, size(tx_sym, 2));
-tx_papr_slot = zeros(1, size(tx_sym, 2));     % for test: papr
-ch_mse_slot = zeros(1, size(tx_sym, 2));      % for test: channel mse
-for idx_slot = 1 : size(tx_sym, 2)
+tx_papr_usrfrm = zeros(1, size(tx_sym, 2));     % for test: papr
+ch_mse_usrfrm = zeros(1, size(tx_sym, 2));      % for test: channel mse
+for idx_usrfrm = 1 : size(tx_sym, 2)
     
-    % extract slot data per user
-    tx_sym_data_slot = tx_sym(:, idx_slot);
+    % extract user frame data per user
+    tx_sym_data_usrfrm = tx_sym(:, idx_usrfrm);
     
     % map qam symbols to user physical resource blocks
-    [tx_sym_rbs, tx_sym_pilot_slot] = ofdm_sym_map(tx_sym_data_slot, num);
+    [tx_sym_rbs, tx_sym_pilot_usrfrm] = ofdm_sym_map(tx_sym_data_usrfrm, num);
     
     % map user resource blocks to whole bandwidth (temporary)
-    tx_sym_bw = zeros(num.num_subc_bw, num.num_ofdmsym_slot);
+    tx_sym_bw = zeros(num.num_subc_bw, num.num_ofdmsym_usr);
     tx_sym_bw(1:size(tx_sym_rbs, 1), 1:size(tx_sym_rbs, 2)) = tx_sym_rbs;
     
     % map bandwidth to the center of fft range
-    tx_sym_nfft_shift = zeros(num.num_fft, num.num_ofdmsym_slot);
+    tx_sym_nfft_shift = zeros(num.num_fft, num.num_ofdmsym_usr);
     tx_sym_nfft_shift((num.num_fft/2)-(num.num_subc_bw/2)+1:(num.num_fft/2)+(num.num_subc_bw/2), :) = tx_sym_bw;
     tx_sym_nfft = fftshift(tx_sym_nfft_shift, 1);
     
@@ -108,7 +109,7 @@ for idx_slot = 1 : size(tx_sym, 2)
     
     % test: calculate papr
     if test_option.papr
-        tx_papr_slot(1, idx_slot) = mean(max(abs(tx_ofdmsym_cp).^2, [], 1)./mean(abs(tx_ofdmsym_cp).^2, 1));
+        tx_papr_usrfrm(1, idx_usrfrm) = mean(max(abs(tx_ofdmsym_cp).^2, [], 1)./mean(abs(tx_ofdmsym_cp).^2, 1));
     end
     
     % serialize
@@ -122,10 +123,10 @@ for idx_slot = 1 : size(tx_sym, 2)
 %     rx_ofdmsym_serial = awgn(tx_ofdmsym_serial, snr_db, 'measured');
     
     % reshape
-    rx_ofdmsym_cp = reshape(rx_ofdmsym_serial, num.num_fft+num.num_cp, num.num_ofdmsym_slot);
+    rx_ofdmsym_cp = reshape(rx_ofdmsym_serial, num.num_fft+num.num_cp, []);
     
     % remove cp
-    rx_ofdmsym = rx_ofdmsym_cp(num.num_cp+1:end,:);
+    rx_ofdmsym = rx_ofdmsym_cp(num.num_cp+1:end, :);
     
     % ofdm demodulate
     rx_sym_nfft = (1/sqrt(num.num_fft)) * fft(rx_ofdmsym, [], 1);
@@ -143,26 +144,26 @@ for idx_slot = 1 : size(tx_sym, 2)
     % test: calculate channel estimation error
     if test_option.ch_mse
         ch_real_rbs = ofdm_ch_est(tx_sym_rbs, rx_sym_rbs, tx_ofdmsym_faded, num, 'real', fading_ch, ch_path_gain);
-        ch_mse_slot(1, idx_slot) = mean(abs(ch_real_rbs-ch_est_rbs).^2, 'all');
+        ch_mse_usrfrm(1, idx_usrfrm) = mean(abs(ch_real_rbs-ch_est_rbs).^2, 'all');
     end
     
     % equalize channel in tf-domain
     rx_sym_rbs_eq = ofdm_ch_eq(rx_sym_rbs, ch_est_rbs, noise_var, cheq_option);
     
     % demap data and pilot qam symbols
-    [rx_sym_data_slot, rx_sym_pilot_slot] = ofdm_sym_demap(rx_sym_rbs_eq, num);
-%     rx_sym_data_slot = ofdm_sym_demap(rx_sym_rbs, num);
+    [rx_sym_data_usrfrm, rx_sym_pilot_usrfrm] = ofdm_sym_demap(rx_sym_rbs_eq, num);
+%     rx_sym_data_usrfrm = ofdm_sym_demap(rx_sym_rbs, num);
     
     % buffer qam symbols
-    rx_sym(:, idx_slot) = rx_sym_data_slot;
+    rx_sym(:, idx_usrfrm) = rx_sym_data_usrfrm;
     
     % buffer pilot errors
-    sym_pilot_error(:, idx_slot) = rx_sym_pilot_slot(:)-tx_sym_pilot_slot(:);   % for error variance calculation
+    sym_pilot_error(:, idx_usrfrm) = rx_sym_pilot_usrfrm(:)-tx_sym_pilot_usrfrm(:);   % for error variance calculation
     
-%     fprintf('tx_data_pwr:%6.3f    rx_data_pwr:%6.3f    tx_pilot_pwr:%6.3f    rx_pilot_pwr:%6.3f\n', std(tx_sym(:)), std(rx_sym(:)), std(tx_sym_pilot_slot(:)), std(rx_sym_pilot_slot(:)))
-%     fprintf('tx_data_pwr:%6.3f    rx_data_pwr:%6.3f    tx_pilot_pwr:%6.3f    rx_pilot_pwr:%6.3f\n', mean(abs(tx_sym(:)).^2), mean(abs(rx_sym(:)).^2), mean(abs(tx_sym_pilot_slot(:)).^2), mean(abs(rx_sym_pilot_slot(:)).^2))
-%     fprintf('data_std:%6.3f    pilot_std:%6.3f\n', mean(abs(tx_sym(:)-rx_sym(:)).^2), mean(abs(tx_sym_pilot_slot(:)-rx_sym_pilot_slot(:)).^2))
-%     fprintf('data_std:%6.3f    pilot_std:%6.3f\n', std(tx_sym(:)-rx_sym(:)), std(tx_sym_pilot_slot(:)-rx_sym_pilot_slot(:)))
+%     fprintf('tx_data_pwr:%6.3f    rx_data_pwr:%6.3f    tx_pilot_pwr:%6.3f    rx_pilot_pwr:%6.3f\n', std(tx_sym(:)), std(rx_sym(:)), std(tx_sym_pilot_usrfrm(:)), std(rx_sym_pilot_usrfrm(:)))
+%     fprintf('tx_data_pwr:%6.3f    rx_data_pwr:%6.3f    tx_pilot_pwr:%6.3f    rx_pilot_pwr:%6.3f\n', mean(abs(tx_sym(:)).^2), mean(abs(rx_sym(:)).^2), mean(abs(tx_sym_pilot_usrfrm(:)).^2), mean(abs(rx_sym_pilot_usrfrm(:)).^2))
+%     fprintf('data_std:%6.3f    pilot_std:%6.3f\n', mean(abs(tx_sym(:)-rx_sym(:)).^2), mean(abs(tx_sym_pilot_usrfrm(:)-rx_sym_pilot_usrfrm(:)).^2))
+%     fprintf('data_std:%6.3f    pilot_std:%6.3f\n', std(tx_sym(:)-rx_sym(:)), std(tx_sym_pilot_usrfrm(:)-rx_sym_pilot_usrfrm(:)))
 %     pause
     
 %     figure
@@ -241,14 +242,14 @@ end
 
 % calculate papr
 if test_option.papr
-    tx_papr = mean(tx_papr_slot);
+    tx_papr = mean(tx_papr_usrfrm);
 else
     tx_papr = [];
 end
 
 % calculate channel mse
 if test_option.ch_mse
-    ch_mse = mean(ch_mse_slot);
+    ch_mse = mean(ch_mse_usrfrm);
 else
     ch_mse = [];
 end

@@ -48,6 +48,7 @@ while 1
     snr_db_start = nw_parse_prm.snr;
     bw_mhz = nw_parse_prm.bw;
     scs_khz = nw_parse_prm.scs;
+    num_slot = nw_parse_prm.slot;
     len_tb_bit = nw_parse_prm.tblen;
     mcs = nw_parse_prm.mcs;
     num_sim = nw_parse_prm.nsim;
@@ -57,7 +58,7 @@ while 1
     
     % set equalization option
 %     nw_num = nw_num_prm(bw_mhz, waveform, chest_option);
-    nw_num = nw_num_prm_r1(scs_khz, bw_mhz, waveform, chest_option);
+    nw_num = nw_num_prm_r1(scs_khz, bw_mhz, num_slot, waveform, chest_option);
     nw_cc = nw_cc_prm(len_tb_bit);
     nw_rm = nw_rm_prm(len_tb_bit, mcs, nw_num, nw_cc);
     nw_sim = nw_sim_prm(len_tb_bit, num_sim, nw_num, nw_cc, nw_rm);
@@ -67,11 +68,11 @@ while 1
     test_option.ch_mse = false;             % channel mmse test
     test_option.sym_err_var = false;        % symbol error variance test
     test_option.ch_edge_interp = false;     % tf-channel edge interpolation test (no use)
-    test_option.partial_reception = 14;   % partial reception test for latency enhancement (number of symbols received)
+    test_option.partial_reception = nw_num.num_ofdmsym_usr;   % partial reception test for latency enhancement (number of symbols received)
     test_option.otfs_map_plan = 3;          % pilot resource mapping test (refer to 'otfs_sym_map_r2.m')
     test_option.otfs_pilot_impulse_pwr_reduction = false;       % valid only when impulse pilot is used
     test_option.otfs_pilot_spread_seq = zadoffChuSeq(1,37);     % pilot spread seq. (zadoff-chu sequence spreading)
-    test_option.otfs_pilot_seq_ones = ones(37, 1);              % pilot spread seq. (all ones)
+    test_option.otfs_pilot_seq_ones = zadoffChuSeq(1,37); % ones(37, 1);              % pilot spread seq. (all ones)
 %     test_option.otfs_pilot_spread_seq = exp(-1i*pi*25*(0:36).*(1:37)/37);
     
     % check test option
@@ -165,7 +166,7 @@ while 1
         fprintf(fp2, '\n');
         
         % set stopping criteria
-        if nw_sim_result(snr_idx, 3) < ErrorBreak
+        if (nw_sim_result(snr_idx, 3) < ErrorBreak) && ~(test_option.papr || test_option.ch_mse || test_option.sym_err_var)
             disp('BREAK');
             break;
         end
