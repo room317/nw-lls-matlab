@@ -27,7 +27,7 @@ num_ub_req = ceil(len_tb_sym_req / (num.num_qamsym_usr * cc.C));    % number of 
 G = num_ub_req * (num.num_qamsym_usr * cc.C) * Qm;                  % number of tx bits required
 G_ = G / (NL * Qm);                                                 % number of tx symbols per layer required
 gamma = mod(G_, cc.C);
-E = NL * Qm * [floor(G_ / cc.C) * ones(cc.C - gamma, 1); ceil(G_ / cc.C) * ones(gamma, 1)];
+E = NL * Qm * [floor(G_ / cc.C) * ones(cc.C - gamma, 1); ceil(G_ / cc.C) * ones(gamma, 1)]; % number of total tx bits per code block
 
 % simulation setup
 num_data_sym_per_cw = E(1) / Qm;                            % number of symbol per codeword
@@ -52,18 +52,19 @@ s23 = [s2 s3]';
 punc_tbl = [s1; s23(:)];
 
 % output
-nw_rm.Qm = Qm;            % bits per symbol
-nw_rm.D = D;              % rate matching input length (bit)
-nw_rm.nC = nC;            % number of column
-nw_rm.nR = nR;            % number of rows
-nw_rm.Kpi = Kpi;          % block interleaver length
-nw_rm.Kw = Kw;            % circular buffer length
+nw_rm.Qm = Qm;              % bits per symbol
+nw_rm.D = D;                % rate matching input length (bit)
+nw_rm.nC = nC;              % number of column
+nw_rm.nR = nR;              % number of rows
+nw_rm.Kpi = Kpi;            % block interleaver length
+nw_rm.Kw = Kw;              % circular buffer length
 nw_rm.nDummy = nDummy;
 nw_rm.P = P;
-nw_rm.E = E;              % rate matching output sequence length per coded block
+nw_rm.E = E;                % rate matching output sequence length per coded block (number of total tx bits per code block)
 nw_rm.num_data_sym_per_cw = num_data_sym_per_cw;
+nw_rm.num_usrfrm = num_usrfrm;              % number of user frame
 nw_rm.t_tb = t_tb;
-nw_rm.subblk_int_tbl = subblk_int_tbl;    % subblock interleaving table
-nw_rm.punc_tbl = punc_tbl;                % puncturing table
+nw_rm.subblk_int_tbl = subblk_int_tbl;      % subblock interleaving table
+nw_rm.punc_tbl = punc_tbl;                  % puncturing table
 
 end

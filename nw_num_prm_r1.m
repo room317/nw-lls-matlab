@@ -1,4 +1,4 @@
-function nw_num = nw_num_prm_r1(scs_khz, bw_mhz, num_slot, waveform, chest_option)
+function nw_num = nw_num_prm_r1(scs_khz, bw_mhz, num_slot, waveform, chest_option, usr_option)
 
 % timing parameter reference
 % 1 frame = 10 ms
@@ -49,10 +49,26 @@ num_ofdmsym_slot = 14;                      % number of ofdm symbols per slot
 num_ofdmsym = num_ofdmsym_slot*num_slot;    % number of ofdm symbols
 
 % set user parameters (full span, prb_size: 12*14)
-num_rb_usr = num_rb; % 3                            % number of resource blocks per user
-num_slot_usr = num_slot;                            % number of slots per user
+if strcmp(usr_option, 'su')                 % full spreading
+    num_rb_usr = num_rb;                    % number of resource blocks per user
+    num_slot_usr = num_slot;                % number of slots per user
+    list_usr = [];                          % user index list
+elseif strcmp(usr_option, 'mu')
+    num_rb_usr = 3;                         % number of resource blocks per user
+    num_slot_usr = 1;                       % number of slots per user
+    list_usr = [1 2 3 4];                   % user index list
+else
+    error('''test_usr'' shall be either ''su'' or ''mu''.\n')
+end
 num_subc_usr = num_rb_usr*num_subc_rb;              % number of subcarriers per user
 num_ofdmsym_usr = num_ofdmsym_slot*num_slot_usr;    % number of ofdm symbols per user (slot-based)
+max_usr_rb = floor(num_rb/num_rb_usr);              % max. user rb index
+max_usr_slot = floor(num_slot/num_slot_usr);        % max. user slot index
+max_usr = max_usr_rb*max_usr_slot;                  % max. number of users
+num_usr = length(list_usr);                         % number of users
+if sum(double(list_usr > max_usr)) > 0
+    error('max. user index shall be %d.\n', max_usr)
+end
 
 % set index parameters
 if strcmp(waveform, 'ofdm')    % ofdm
@@ -101,25 +117,21 @@ if strcmp(waveform, 'ofdm')    % ofdm
     num_delay_data_usr = [];
 else
     
-    % user parameters for otfs
-    num_doppler_usr = num_ofdmsym_usr;              % corresponds to ofdm symbols
-    num_delay_usr = num_subc_usr;                   % corresponds to subcarriers
+    % set pilot resource ratio (otfs pilot setup)
+    %   - num. otfs pilot(including guard) qam symbols = num. ofdm pilot qam symbols
+    %     ex) 600*2 for ofdm (14.29%) and 86*14 for otfs (14.33%)
+    delay_pilot_ratio = 0.4;        % num_delay_pilot/num_delay_data (40% of available delay grids, even number)
+    doppler_pilot_ratio = 1.0;      % num_doppler_pilot/num_doppler_data (100% of available doppler grids)
+    delay_guard_ratio = 0.2;        % num_delay_guard/num_delay_pilot (20% of pilot delay grids)
+    doppler_guard_ratio = 0.2;      % num_doppler_guard/num_doppler_pilot (20% of pilot doppler grids)
     
-    % set number of data symbols per user
-    if strcmp(chest_option, 'dd_tone')     % tf-domain pilots (some symbols for pilots)
-        % otfs pilot setup
-        %   - num. otfs pilot(including guard) qam symbols = num. ofdm pilot qam symbols
-        %   ex) 600*2 and 86*14
-        num_doppler_pilot_usr = num_ofdmsym_usr; % 14;                     % number of doppler grids with pilots
-        num_delay_pilot_usr = floor(num_subc_bw*(1/num_ofdmsym_slot))*2; % 86;                       % number of delay grids with pilots
-        num_doppler_guard_usr = 0;                      % number of doppler grids for guard (set 0 for full-span pilot)
-        num_delay_guard_usr = floor(num_delay_pilot_usr/8); % 10;          % number of delay grids for guard (set even number)
-    else
-        num_doppler_pilot_usr = 0;
-        num_delay_pilot_usr = 0;
-        num_doppler_guard_usr = 0;
-        num_delay_guard_usr = 0;
-    end
+    % user parameters for otfs
+    num_doppler_usr = num_ofdmsym_usr;              % corresponds to ofdm symbols (fixed)
+    num_delay_usr = num_subc_usr;                   % corresponds to subcarriers (fixed)
+    num_doppler_pilot_usr = double(strcmp(chest_option, 'dd_tone'))*round(num_doppler_usr*(doppler_pilot_ratio/2))*2;           % number of doppler grids with pilots
+    num_delay_pilot_usr = double(strcmp(chest_option, 'dd_tone'))*round(num_delay_usr*(delay_pilot_ratio/2))*2;                 % number of delay grids with pilots
+    num_doppler_guard_usr = double(num_doppler_usr~=num_doppler_pilot_usr)*round(num_doppler_pilot_usr*doppler_guard_ratio);    % number of doppler grids for guard (set 0 for full-span pilot)
+    num_delay_guard_usr = double(num_delay_usr~=num_delay_pilot_usr)*round(num_delay_pilot_usr*delay_guard_ratio);              % number of delay grids for guard (set even number)
     num_doppler_data_usr = num_doppler_usr-num_doppler_pilot_usr;   % number of doppler grids without pilot and guard (set even number)
     num_delay_data_usr = num_delay_usr-num_delay_pilot_usr;         % number of delay grids without pilot and guard (set even number)
     
@@ -140,7 +152,7 @@ end
 % set timing parameters
 %   - len_frame = len_rb_sym_user * (nfft + num_cp);
 %   - t_usrfrm = (length of 1 symbol + CP) * number of symbol * length of symbol
-t_usrfrm = (num_fft + num_cp) * num_ofdmsym / sample_rate;   % transmission time interval (sec)
+t_usrfrm = (num_fft+num_cp)*num_ofdmsym/sample_rate;   % transmission time interval (sec)
 
 % output
 % nw_num.nfft = nfft;
@@ -163,11 +175,19 @@ t_usrfrm = (num_fft + num_cp) * num_ofdmsym / sample_rate;   % transmission time
 nw_num.num_fft = num_fft;
 nw_num.sample_rate = sample_rate;
 nw_num.num_cp = num_cp;
+nw_num.num_subc_rb = num_subc_rb;
 nw_num.num_subc_bw = num_subc_bw;                   % updated
 nw_num.num_ofdmsym_slot = num_ofdmsym_slot;
 nw_num.num_ofdmsym = num_ofdmsym;
 nw_num.num_qamsym_usr = num_qamsym_usr;
 nw_num.t_usrfrm = t_usrfrm;
+
+nw_num.num_rb_usr = num_rb_usr;
+nw_num.num_slot_usr = num_slot_usr;
+nw_num.list_usr = list_usr;
+nw_num.max_usr_rb = max_usr_rb;
+nw_num.max_usr_slot = max_usr_slot;
+nw_num.num_usr = num_usr;
 
 nw_num.num_subc_usr = num_subc_usr;
 nw_num.num_ofdmsym_usr = num_ofdmsym_usr;

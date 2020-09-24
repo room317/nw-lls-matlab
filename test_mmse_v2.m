@@ -12,7 +12,7 @@ esn0_db = 0:5:40;
 snr = 10.^(esn0_db/10);
 beta = 17/9;
 m = 16;
-ltap = 5;-
+ltap = 5;
 
 h_est_ls = zeros(1,length(esn0_db));
 h_est_lmmse = zeros(1,length(esn0_db));
@@ -25,7 +25,7 @@ for isnr = 1:length(esn0_db)
     tic
     
     h_mse_ls = 0;
-    h_mse_lmmse=0; 
+    h_mse_lmmse=0;
     ht_mse_lmmse =0;
     htd_mse_lmmse=0;
     htq_mse_lmmse =0;

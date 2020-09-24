@@ -48,7 +48,10 @@ prm_chtflteup_idx = find(contains(prm_set, 'TFLTEUP'), 1);
 prm_chtfnr_idx = find(contains(prm_set, 'TFNR'), 1);
 prm_tfeqzf_idx = find(contains(prm_set, 'TFEQZF'), 1);
 prm_tfeqmmse_idx = find(contains(prm_set, 'TFEQMMSE'), 1);
-prm_ddeq_idx = find(contains(prm_set, 'DDEQ'), 1);
+prm_ddeqzf_idx = find(contains(prm_set, 'DDEQZF'), 1);
+prm_ddeqmmse_idx = find(contains(prm_set, 'DDEQMMSE'), 1);
+prm_su_idx = find(contains(prm_set, 'SU'), 1);
+prm_mu_idx = find(contains(prm_set, 'MU'), 1);
 
 % prm_bw_idx = find(not(cellfun('isempty', strfind(prm_set, 'BW'))), 1);
 % prm_fc_idx = find(not(cellfun('isempty', strfind(prm_set, 'F'))), 1);
@@ -234,15 +237,30 @@ end
 cheq_set = [ ...
     ~isempty(prm_tfeqzf_idx)
     ~isempty(prm_tfeqmmse_idx)
-    ~isempty(prm_ddeq_idx)];
+    ~isempty(prm_ddeqzf_idx)
+    ~isempty(prm_ddeqmmse_idx)];
 if sum(double(cheq_set)) ~= 1
-    error('Channel equalization setting: choose one of these: TFEQ, DDEQ.')
+    error('Channel equalization setting: choose one of these: TFEQZF, TFEQMMSE, DDEQZF, DDEQMMSE.')
 elseif ~isempty(prm_tfeqzf_idx)
-    prm_cheq = 'tfeq_zf';  % tf-domain equalization
+    prm_cheq = 'tfeq_zf';       % tf-domain equalization
 elseif ~isempty(prm_tfeqmmse_idx)
-    prm_cheq = 'tfeq_mmse';  % tf-domain equalization
+    prm_cheq = 'tfeq_mmse';     % tf-domain equalization
+elseif ~isempty(prm_ddeqzf_idx)
+    prm_cheq = 'ddeq_zf';       % dd-domain equalization
 else
-    prm_cheq = 'ddeq';  % dd-domain equalization
+    prm_cheq = 'ddeq_mmse';     % dd-domain equalization
+end
+
+% multi-user simulation
+usr_set = [ ...
+    ~isempty(prm_su_idx)
+    ~isempty(prm_mu_idx)];
+if sum(double(usr_set)) ~= 1
+    error('Number of users: choose one of these: SU, MU.')
+elseif ~isempty(prm_su_idx)
+    prm_usr = 'su';  % single-user
+else
+    prm_usr = 'mu';  % multi-user
 end
 
 % check errors
@@ -265,5 +283,6 @@ nw_parse_prm.nsim = prm_nsim;
 nw_parse_prm.snr = prm_snr;
 nw_parse_prm.chest = prm_chest;
 nw_parse_prm.cheq = prm_cheq;
+nw_parse_prm.usr = prm_usr;
 
 end
