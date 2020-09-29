@@ -7,14 +7,14 @@ if strcmp(chest_option, 'perfect')
     ch_in_sym_rbs_sfft = tx_sym_rbs_tf;
     
     % demap channel output
-    ch_out_ofdmsym = reshape(ch_out_time_serial, num.num_fft+num.num_cp, num.num_ofdmsym);
-    ch_out_sym_nfft = (1/sqrt(num.num_fft)) * fft(ch_out_ofdmsym(num.num_cp+1:end, :), [], 1);
+    ch_out_ofdmsym = reshape(ch_out_time_serial, num.num_fft+num.num_cp, []);
+    ch_out_sym_nfft = (1/sqrt(num.num_fft))*fft(ch_out_ofdmsym(num.num_cp+1:end, :), [], 1);
     ch_out_sym_nfft_shift = fftshift(ch_out_sym_nfft, 1);
     ch_out_sym_bw = ch_out_sym_nfft_shift(num.num_fft/2-num.num_subc_bw/2+1:num.num_fft/2+num.num_subc_bw/2, :);
-    ch_out_sym_rbs_sfft = ch_out_sym_bw(list_subc_usr, list_ofdmsym_usr);      % temporary
+    ch_out_sym_rbs_sfft = ch_out_sym_bw(list_subc_usr, list_ofdmsym_usr);
     
     % estimate channels
-    ch_perfect_rbs_zf = ch_out_sym_rbs_sfft ./ ch_in_sym_rbs_sfft;  % estimate channel
+    ch_perfect_rbs_zf = ch_out_sym_rbs_sfft./ch_in_sym_rbs_sfft;  % estimate channel
     ch_sat = 100;   % ch_est saturation (zero-division prevention)
     ch_perfect_rbs_sat = complex(sign(real(ch_perfect_rbs_zf)).*min(abs(real(ch_perfect_rbs_zf)),ch_sat), ...
         sign(imag(ch_perfect_rbs_zf)).*min(abs(imag(ch_perfect_rbs_zf)),ch_sat));

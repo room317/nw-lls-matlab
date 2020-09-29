@@ -109,7 +109,7 @@ while 1
             
             % simulate single packet
             if strcmp(waveform, 'ofdm')    % ofdm
-                [pkt_error, tx_papr, ch_mse, sym_err_var] = ofdm_single_run_r2(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option, cheq_option, test_option);
+                [pkt_error, tx_papr, ch_mse, sym_err_var] = ofdm_dnlink_singlerun_r0(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option, cheq_option, test_option);
             else                           % otfs
                 [pkt_error, tx_papr, ch_mse, sym_err_var] = otfs_dnlink_singlerun_r0(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option, cheq_option, test_option);
             end

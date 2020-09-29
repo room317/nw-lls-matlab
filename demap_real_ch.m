@@ -46,7 +46,7 @@ else
 end
 
 % generate real one-tap time-frequency channel
-if strcmp(chest_option, 'real') && ~test_option.fulltap_eq
+if (strcmp(chest_option, 'real') && ~test_option.fulltap_eq) || test_option.ch_mse
     % extract diagonal elements of real channel
     ch_onetap_usr_tf = zeros(nsubc_usr, nsym_usr);
     for idx_sym = 1:nsym_usr

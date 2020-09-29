@@ -52,7 +52,7 @@ num_ofdmsym = num_ofdmsym_slot*num_slot;    % number of ofdm symbols
 if strcmp(usr_option, 'su')                 % full spreading
     num_rb_usr = num_rb;                    % number of resource blocks per user
     num_slot_usr = num_slot;                % number of slots per user
-    list_usr = [];                          % user index list
+    list_usr = 1;                           % user index list
 elseif strcmp(usr_option, 'mu')
     num_rb_usr = 3;                         % number of resource blocks per user
     num_slot_usr = 1;                       % number of slots per user
