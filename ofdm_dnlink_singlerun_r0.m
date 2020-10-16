@@ -45,8 +45,9 @@ else
         'PathGainsOutputPort', true);
 end
 
-% calculate noise variance
-noise_var = (num.num_subc_usr/num.num_fft)*(10^((-0.1)*snr_db));
+% calculate snr and noise variance
+snr_db_adj = snr_db-(10*log10((num.num_rb*num.num_slot)/(num.num_usr*num.num_rb_usr*num.num_slot_usr)));    % adjust time-domain snr wrt resource size
+noise_var = 10^((-0.1)*snr_db)*(num.num_subc_bw/num.num_fft);                                               % calculate noise variance at dd resource block
 
 %% base station (tx) operation per user (per user data generation)
 
@@ -125,7 +126,7 @@ for idx_usr = 1:num.num_usr
         tx_ofdmsym_faded(:, idx_usrfrm, idx_usr) = tx_ofdmsym_usr_faded;
         
         % add gaussian noise
-        rx_ofdmsym_serial(:, idx_usrfrm, idx_usr) = awgn(tx_ofdmsym_usr_faded, snr_db, 'measured');
+        rx_ofdmsym_serial(:, idx_usrfrm, idx_usr) = awgn(tx_ofdmsym_usr_faded, snr_db_adj, 'measured');
         
         % regenerate real channel
         if test_option.ch_mse || strcmp(chest_option, 'real')

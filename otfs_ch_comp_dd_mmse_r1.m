@@ -113,8 +113,8 @@ ch_est_dd_ndft_shift = fftshift(fftshift(ch_est_dd_ndft, 1), 2);
 ch_est_tf_ndft = sqrt(num.num_ofdmsym_per_subframe/num.ndft)*fft(ifft(ch_est_dd_ndft_shift, [], 2), [], 1);
 ch_est_tf_ndft_mmse = conj(ch_est_tf_ndft) ./ (noise_var+abs(ch_est_tf_ndft).^2);
 
-assignin('base', 'ch_est_dd_ndft_shift', ch_est_dd_ndft_shift);
-assignin('base', 'ch_est_dd_ndft', ch_est_dd_ndft);
+% assignin('base', 'ch_est_dd_ndft_shift', ch_est_dd_ndft_shift);
+% assignin('base', 'ch_est_dd_ndft', ch_est_dd_ndft);
 
 % compensate channel in tf domain
 rx_sym_tf_ndft_eq = rx_sym_tf_ndft .* ch_est_tf_ndft_mmse;

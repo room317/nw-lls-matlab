@@ -1,4 +1,4 @@
-function nw_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, ebno_db, delay_spread_rms_us)
+function nw_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, delay_spread_rms_us)
 
 % channel parameters
 % ref. IST-4-027756 WINNER II D1.1.2 V1.2
@@ -171,7 +171,6 @@ nw_ch.maximum_doppler_shift = doppler_freq;
 nw_ch.t_rms_delay = t_rms_delay;
 nw_ch.t_coherence = t_coherence;
 nw_ch.coherence_bw = coherence_bw;
-nw_ch.ebno_db = ebno_db;
 nw_ch.doppler_spectrum = doppler('Jakes');   % doppler model (create a doppler spectrum structure)
 nw_ch.los = los;
 if los

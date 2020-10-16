@@ -179,11 +179,13 @@ nw_num.num_subc_rb = num_subc_rb;
 nw_num.num_subc_bw = num_subc_bw;                   % updated
 nw_num.num_ofdmsym_slot = num_ofdmsym_slot;
 nw_num.num_ofdmsym = num_ofdmsym;
+nw_num.num_rb = num_rb;                 % number of total rbs
+nw_num.num_slot = num_slot;             % number of total slots
 nw_num.num_qamsym_usr = num_qamsym_usr;
 nw_num.t_usrfrm = t_usrfrm;
 
-nw_num.num_rb_usr = num_rb_usr;
-nw_num.num_slot_usr = num_slot_usr;
+nw_num.num_rb_usr = num_rb_usr;         % number of per-user rbs
+nw_num.num_slot_usr = num_slot_usr;     % number of per-user slots
 nw_num.list_usr = list_usr;
 nw_num.max_usr_rb = max_usr_rb;
 nw_num.max_usr_slot = max_usr_slot;

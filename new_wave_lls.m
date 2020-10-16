@@ -96,7 +96,7 @@ while 1
     nw_sim_result = zeros(SNRCnt, nw_num.num_usr+2);
     for snr_idx = 1:SNRCnt
         snr_db = snr_db_start+SNRStep*(snr_idx-1);
-        nw_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, snr_db, delay_spread_rms_us);
+        nw_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, delay_spread_rms_us);
         
         % initialize counter
         total_error = zeros(1, nw_num.num_usr);

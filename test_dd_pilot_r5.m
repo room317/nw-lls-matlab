@@ -99,7 +99,9 @@ carrier_freq_mhz = 4000;
 velocity_kmh = 500;
 idx_fading = 11;            % 9: TDL-A, 10: TDL-B, 11: TDL-C, 12: TDL-D, 13: TDL-E
 delay_spread_rms_us = 0.1;  % 0.1e-6;
-test_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, snr_db, delay_spread_rms_us);
+snr_db_adj = snr_db-(10*log10((num_rb*num_slot)/(num_usr*num_rb_usr*num_slot_usr)));    % adjust time-domain snr wrt resource size
+noise_var = 10^((-0.1)*snr_db)*(num_subc_bw/num_fft);                                   % calculate noise variance at dd resource block
+test_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, delay_spread_rms_us);
 
 % create a rayleigh fading channel object
 if test_seed >= 0
@@ -127,9 +129,6 @@ switch idx_fading
             'PathGainsOutputPort', true, ...
             'DopplerSpectrum', test_ch.doppler_spectrum);
 end
-
-% calculate noise variance
-noise_var = (num_subc_usr/num_fft)*10^((-0.1)*snr_db);
 
 %% transmitter
 
@@ -215,8 +214,7 @@ end
 [tx_sig_faded, ch_path_gain] = fading_ch(tx_sig);       % ch_path_gain: normally constant per path, vary when doppler exists
 
 % add gaussian noise
-% rx_sig = awgn(tx_sig_faded, snr_db, 'measured');
-rx_sig = tx_sig_faded;
+rx_sig = awgn(tx_sig_faded, snr_db_adj, 'measured');
 
 % regenerate real channel
 if test_scope || test_ch_rmse || strcmp(test_chest, 'real')
