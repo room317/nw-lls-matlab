@@ -9,7 +9,7 @@
 %   - num: numerology parameters
 %   - turbo_enc: turbo encoder object
 
-function [tx_bit, tx_sym_serial, tx_sym] = gen_tx_qamsym(sim, cc, rm, num, turbo_enc)
+function [tx_bit, tx_sym_serial, tx_sym] = gen_tx_qamsym(tx_crc, turbo_enc, sim, cc, rm, num)
 
 % generate bit stream
 tx_bit = randi([0 1], sim.len_tb_bit, 1);
@@ -21,8 +21,7 @@ tx_bit_pad = [tx_bit; zeros(cc.F, 1)];
 tx_bit_buff = reshape(tx_bit_pad, (sim.len_tb_bit+cc.F)/cc.C, cc.C);
 
 % generate crc
-tx_crc = crc.generator(cc.gCRC24A);
-tx_bit_crc = generate(tx_crc, tx_bit_buff);
+tx_bit_crc = tx_crc(tx_bit_buff);
 
 % turbo encode data
 tx_bit_enc = zeros(rm.D*3, cc.C);

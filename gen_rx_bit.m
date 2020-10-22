@@ -10,7 +10,7 @@
 %   - cc: channel coding parameters
 %   - rm: rate matching parameters
 
-function [rx_bit, rx_sym_serial, rx_crc_error] = gen_rx_bit(rx_sym, turbo_dec, error_var, sim, cc, rm)
+function [rx_bit, rx_sym_serial, rx_crc_error] = gen_rx_bit(rx_sym, rx_crc, turbo_dec, error_var, sim, cc, rm)
 
 % serialize qam symbols
 rx_sym_serial = rx_sym(:);
@@ -34,8 +34,7 @@ for idx_cw = 1:cc.C
 end
 
 % detect crc
-rx_crc = crc.detector(cc.gCRC24A);
-[rx_bit_crc_removed, rx_crc_error] = detect(rx_crc, rx_bit_dec);
+[rx_bit_crc_removed, rx_crc_error] = rx_crc(rx_bit_dec);
 
 % remove padded bits
 rx_bit = rx_bit_crc_removed(1 : sim.len_tb_bit);

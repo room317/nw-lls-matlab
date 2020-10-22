@@ -16,7 +16,11 @@ function [pkt_error, tx_papr, ch_mse, sym_err_var] = ofdm_dnlink_singlerun_r0(si
 
 %% common objects and parameters
 
-% create turbo encoder/decoder
+% create crc generator and detector objects
+tx_crc = comm.CRCGenerator(cc.gCRC24A);
+rx_crc = comm.CRCDetector(cc.gCRC24A);
+
+% create turbo encoder/decoder objects
 turbo_enc = comm.TurboEncoder('TrellisStructure', cc.tc_trellis, ...
     'InterleaverIndices', cc.PI+1);
 turbo_dec = comm.TurboDecoder('TrellisStructure', cc.tc_trellis, ...
@@ -60,7 +64,7 @@ tx_sym_bw = zeros(num.num_subc_bw, num.num_ofdmsym, rm.num_usrfrm);
 for idx_usr = 1:num.num_usr
     
     % generate ofdm/otfs qam symbols per user
-    [tx_bit_usr, tx_sym_serial_usr, tx_sym_usr] = gen_tx_qamsym(sim, cc, rm, num, turbo_enc);
+    [tx_bit_usr, tx_sym_serial_usr, tx_sym_usr] = gen_tx_qamsym(tx_crc, turbo_enc, sim, cc, rm, num);
     tx_bit(:, idx_usr) = tx_bit_usr;
     tx_sym_serial(:, idx_usr) = tx_sym_serial_usr;
     tx_sym(:, :, idx_usr) = tx_sym_usr;
@@ -244,7 +248,7 @@ for idx_usr = 1:num.num_usr
     end
     
     % generate ofdm/otfs received bits per user
-    [rx_bit_usr, rx_sym_serial_usr, rx_crc_error_usr] = gen_rx_bit(rx_sym(:, :, idx_usr), turbo_dec, error_var_usr, sim, cc, rm);
+    [rx_bit_usr, rx_sym_serial_usr, rx_crc_error_usr] = gen_rx_bit(rx_sym(:, :, idx_usr), rx_crc, turbo_dec, error_var_usr, sim, cc, rm);
     rx_bit(:, idx_usr) = rx_bit_usr;
     rx_sym_serial(:, idx_usr) = rx_sym_serial_usr;
     rx_crc_error(:, idx_usr) = rx_crc_error_usr;
