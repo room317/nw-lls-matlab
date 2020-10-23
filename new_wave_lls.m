@@ -58,7 +58,6 @@ while 1
     usr_option = nw_parse_prm.usr;
     
     % set equalization option
-%     nw_num = nw_num_prm(bw_mhz, waveform, chest_option);
     nw_num = nw_num_prm_r1(scs_khz, bw_mhz, num_slot, waveform, chest_option, usr_option);
     nw_cc = nw_cc_prm(len_tb_bit);
     nw_rm = nw_rm_prm(len_tb_bit, mcs, nw_num, nw_cc);
@@ -91,6 +90,7 @@ while 1
 %     end
 %     test_option.walsh_seq = walsh_seq;
     
+    tic
     fprintf('RUNNING CASE: %s', file_read);
     
     nw_sim_result = zeros(SNRCnt, nw_num.num_usr+2);
@@ -180,6 +180,7 @@ while 1
             break;
         end
     end
+    toc
     
     % plot
     for idx_usr = 1:nw_num.num_usr
