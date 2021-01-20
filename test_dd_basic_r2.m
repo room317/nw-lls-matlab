@@ -31,11 +31,10 @@ f_s = f_subc*num_ofdm_subc;
 % t_sym = (num_ofdm_subc+len_cp)/f_s;
 cfo_norm = 0; % normalized cfo. cfo = cfo_norm/t_sym;
 carrier_freq_mhz = 4000;
-velocity_kmh = 120; % 120;
+velocity_kmh = 3; % 120;
 idx_fading = 9; % 9: TDL-A, 12: TDL-D
 delay_spread_rms_us = 0.1; % 0.1; %0.1e-6;
-snr_db = 25;
-test_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, snr_db, delay_spread_rms_us);
+test_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, delay_spread_rms_us);
 
 % % check error
 % if test_synch > len_cp

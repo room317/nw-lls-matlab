@@ -11,7 +11,7 @@ test_scope = false;
 test_seed = -1;
 
 % set parameters
-NumSim = 4;
+NumSim = 1;
 NumSubc = 600;
 NumSym = 14;
     

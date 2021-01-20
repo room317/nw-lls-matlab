@@ -11,16 +11,18 @@
 %   - cheq_option: channel equalization option (zf or mmse)
 %   - test_option: test option (full-tap or 1-tap)
 
-function rx_sym_rbs_eq = ofdm_ch_eq_r1(rx_sym_rbs, ch_est_rbs, ch_real_eff, num, noise_var, chest_option, cheq_option, test_option)
+function [rx_sym_rbs_eq, noise_var_adj] = ofdm_ch_eq_r1(rx_sym_rbs, ch_est_rbs, ch_real_eff, num, noise_var, chest_option, cheq_option, test_option)
 
 if strcmp(cheq_option, 'tfeq_zf')
     if strcmp(chest_option, 'real') && test_option.fulltap_eq
         % equalize channel (full-tap zf)
         rx_sym_rbs_eq_vec = ch_real_eff\rx_sym_rbs(:);
         rx_sym_rbs_eq = reshape(rx_sym_rbs_eq_vec, num.num_subc_usr, num.num_ofdmsym_usr);
+        noise_var_adj = noise_var*(abs(reshape(ch_real_eff\ones(num.num_subc_usr*num.num_ofdmsym_usr, 1), num.num_subc_usr, num.num_ofdmsym_usr)).^2);
     else
         % equalize channel (one-tap zf)
         rx_sym_rbs_eq = rx_sym_rbs./ch_est_rbs;
+        noise_var_adj = noise_var./(abs(ch_est_rbs).^2);
     end
 elseif strcmp(cheq_option, 'tfeq_mmse')
     if strcmp(chest_option, 'real') && test_option.fulltap_eq
@@ -30,12 +32,14 @@ elseif strcmp(cheq_option, 'tfeq_mmse')
         % equalize channel (full-tap mmse)
         rx_sym_rbs_eq_vec = ch_real_eff_mmse*rx_sym_rbs(:);
         rx_sym_rbs_eq = reshape(rx_sym_rbs_eq_vec, num.num_subc_usr, num.num_ofdmsym_usr);
+        noise_var_adj = noise_var*(abs(reshape(sum(ch_real_eff_mmse, 2), num.num_subc_usr, num.num_ofdmsym_usr)).^2);
     else
         % calculate mmse channel
         ch_est_rbs_mmse = conj(ch_est_rbs)./(noise_var+abs(ch_est_rbs).^2);
         
         % equalize channel (one-tap)
         rx_sym_rbs_eq = rx_sym_rbs.*ch_est_rbs_mmse;
+        noise_var_adj = noise_var*(abs(ch_est_rbs_mmse).^2);
     end
 else
     error('''cheq_option'' value must be one of these: {''tfeq_zf'', ''tfeq_mmse''}')

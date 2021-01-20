@@ -151,7 +151,7 @@ for idx_usr = 1:num.num_usr
         
         % regenerate real channel
         if test_option.ch_mse || strcmp(chest_option, 'real')
-            [ch_real_mat_usr_tf, ~, ~, ~] = gen_real_ch_r1(fading_ch, ch_path_gain_usr, num.num_fft, num.num_cp, num.num_subc_bw, num.num_ofdmsym, [], [], false);
+            [ch_real_mat_usr_tf, ~, ~, ~] = gen_real_ch_r1(fading_ch, ch_path_gain_usr, num.num_fft, num.num_cp, num.num_subc_bw, num.num_ofdmsym, [], [], false, test_option);
             ch_real_mat_tf(:, :, :, idx_usrfrm, idx_usr) = ch_real_mat_usr_tf;
         end
         

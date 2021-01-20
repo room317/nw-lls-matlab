@@ -849,7 +849,7 @@ semilogy(per_case34(:,1),per_case34(:,3),'-rx')
 semilogy(per_case35(:,1),per_case35(:,3),'-rs')
 semilogy(per_case36(:,1),per_case36(:,3),'-r^'), hold off
 grid minor
-title({'FULL SPREADING(50x4) VS PARTIAL SPREADING(3x1), LONG CB, SINGLE USER';'(OTFS BW10 SCS60 SLOT4 FC4000 DS0.1 TDLC MCS8 LEN6120 REAL TFEQMMSE)'})
+title({'FULL SPREAD(11x4) VS PARTIAL SPREAD(3x1), LONG CB, SINGLE USER';'(OTFS BW10 SCS60 SLOT4 FC4000 DS0.1 TDLC MCS8 LEN6120 REAL TFEQMMSE)'})
 xlabel('SNR (dB)'), ylabel('PER')
 legend('PARTIAL V3', 'PARTIAL V120', 'PARTIAL V200', 'PARTIAL V500', 'FULL V3', 'FULL V120', 'FULL V200', 'FULL V500')
 axis([-1 19 1e-3 1])
@@ -864,7 +864,7 @@ semilogy(per_case38(:,1),per_case38(:,3),'-rx')
 semilogy(per_case39(:,1),per_case39(:,3),'-rs')
 semilogy(per_case40(:,1),per_case40(:,3),'-r^'), hold off
 grid minor
-title({'FULL SPREADING(50x4) VS PARTIAL SPREADING(3x1), LONG CB, SINGLE USER';'(OTFS BW10 SCS60 SLOT4 FC4000 DS0.01 TDLE MCS8 LEN6120 REAL TFEQMMSE)'})
+title({'FULL SPREAD(11x4) VS PARTIAL SPREAD(3x1), LONG CB, SINGLE USER';'(OTFS BW10 SCS60 SLOT4 FC4000 DS0.01 TDLE MCS8 LEN6120 REAL TFEQMMSE)'})
 xlabel('SNR (dB)'), ylabel('PER')
 legend('PARTIAL V3', 'PARTIAL V120', 'PARTIAL V200', 'PARTIAL V500', 'FULL V3', 'FULL V120', 'FULL V200', 'FULL V500')
 axis([-1 19 1e-3 1])

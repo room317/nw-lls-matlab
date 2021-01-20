@@ -84,7 +84,7 @@ delay_profile_tdl_e_norm = [0 0.5133 0.5440 0.5630 0.5440 0.7112 1.9092 1.9293 1
 delay_profile_tdl_e_us = delay_profile_tdl_e_norm * delay_spread_rms_us;
 k_factor_tdl_e_db = 22;
 
-% test channel
+% test channel (awgn)
 % power_profile_test_db = [-3.02 0 -2 -6 -7.93 -10.1];
 % delay_profile_test_us = [0 0.04 0.1 0.32 0.46 1];
 power_profile_test_db = 0;

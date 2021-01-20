@@ -10,10 +10,6 @@
 % - rate matching added: 2019.10.22
 % - structure updated: 2019.10.23
 
-% set test mode
-test_dd_pilot = false;  % allocate whole resource block to pilot
-test_real_ch = false;   % real channel with ici into consideration
-
 % set parameters
 SNRCnt = 10;
 SNRStep = 2;
@@ -57,24 +53,35 @@ while 1
     waveform = nw_parse_prm.wave;
     usr_option = nw_parse_prm.usr;
     
+    % set test simulation option
+    sim_option.override = true;     % override simulation options when true
+    sim_option.num_rb = 11;         % number of total rbs
+    sim_option.scs_khz = 60;        % subcarrier spacing (khz)
+    sim_option.num_slot = 4;        % number of total slots
+    sim_option.Qm = 4;              % number of bits per qam symbol
+    sim_option.coderate = 666;      % number of information bits per 1024 bits
+    
     % set equalization option
-    nw_num = nw_num_prm_r1(scs_khz, bw_mhz, num_slot, waveform, chest_option, usr_option);
+    nw_num = nw_num_prm_r1(scs_khz, bw_mhz, num_slot, waveform, chest_option, usr_option, sim_option);
     nw_cc = nw_cc_prm(len_tb_bit);
-    nw_rm = nw_rm_prm(len_tb_bit, mcs, nw_num, nw_cc);
+    nw_rm = nw_rm_prm(len_tb_bit, mcs, nw_num, nw_cc, sim_option);
     nw_sim = nw_sim_prm(len_tb_bit, num_sim, nw_num, nw_cc, nw_rm);
     
     % set test option
-    test_option.papr = true;               % papr test
-    test_option.ch_mse = true;             % channel mmse test
-    test_option.sym_err_var = true;        % symbol error variance test
+    test_option.fading_only = false;        % no awgn noise when true
+    test_option.awgn = false;               % no fading when true
+    test_option.papr = false;               % papr test
+    test_option.ch_mse = false;             % channel mmse test
+    test_option.sym_err_var = false;        % symbol error variance test
     test_option.ch_edge_interp = false;     % tf-channel edge interpolation test (no use)
     test_option.partial_reception = nw_num.num_ofdmsym;   % partial reception test for latency enhancement (number of symbols received)
-    test_option.otfs_map_plan = 3;          % pilot resource mapping test (refer to 'otfs_sym_map_r2.m')
+    test_option.otfs_map_plan = 4;          % pilot resource mapping test (refer to 'otfs_sym_map_r2.m')
     test_option.otfs_pilot_impulse_pwr_reduction = false;       % valid only when impulse pilot is used
     test_option.otfs_pilot_spread_seq = zadoffChuSeq(1,37);     % pilot spread seq. (zadoff-chu sequence spreading)
     test_option.otfs_pilot_seq_ones = zadoffChuSeq(1,37); % ones(37, 1);              % pilot spread seq. (all ones)
-    test_option.fulltap_eq = true;          % use full-tap real channel for equalization
-    test_option.common_usr_ch = true;          % use full-tap real channel for equalization
+    test_option.fulltap_eq = false;          % use full-tap real channel for equalization
+    test_option.common_usr_ch = true;          % use common channel per user
+    test_option.gpu_flag = false;           % use gpu for real channel generation
 %     test_option.otfs_pilot_spread_seq = exp(-1i*pi*25*(0:36).*(1:37)/37);
     
     % check test option
@@ -109,7 +116,7 @@ while 1
             
             % simulate single packet
             if strcmp(waveform, 'ofdm')    % ofdm
-                [pkt_error, tx_papr, ch_mse, sym_err_var] = ofdm_dnlink_singlerun_r0(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option, cheq_option, test_option);
+                [pkt_error, tx_papr, ch_mse, sym_err_var] = ofdm_dnlink_singlerun_r2(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option, cheq_option, test_option);
             else                           % otfs
                 [pkt_error, tx_papr, ch_mse, sym_err_var] = otfs_dnlink_singlerun_r0(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option, cheq_option, test_option);
             end

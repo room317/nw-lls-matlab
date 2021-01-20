@@ -1,4 +1,4 @@
-function nw_num = nw_num_prm_r1(scs_khz, bw_mhz, num_slot, waveform, chest_option, usr_option)
+function nw_num = nw_num_prm_r1(scs_khz, bw_mhz, num_slot, waveform, chest_option, usr_option, sim_option)
 
 % timing parameter reference
 % 1 frame = 10 ms
@@ -14,18 +14,19 @@ function nw_num = nw_num_prm_r1(scs_khz, bw_mhz, num_slot, waveform, chest_optio
 % set subcarrier spacing parameters
 scs_khz_list = [15 30 60];
 idx_scs = find(scs_khz_list == scs_khz, 1);
-if isempty(idx_scs)
+if isempty(idx_scs) && ~sim_option.override
     error('Subcarrier spacing must be one of these: {15, 30, 60}')
 end
 
 % set bandwidth parameters
 bw_mhz_list = [5 10 15 20 25 30 40 50 60 80 90 100];
 idx_bw = find(bw_mhz_list == bw_mhz, 1);
-if isempty(idx_bw)
+if isempty(idx_bw) && ~sim_option.override
     error('Bandwidth must be one of these: {5, 10, 15, 20, 25, 30, 40, 50, 60, 80, 90, 100}')
 end
 
 % set resource block table
+% first column is for custom setting
 % ref.: http://howltestuffworks.blogspot.com/2019/11/5g-nr-resource-blocks.html
 % ref.: https://www.sharetechnote.com/html/5G/5G_FR_Bandwidth.html
 %     bw (mhz)     |   5 |  10 |  15 |  20 |  25 |  30 |  40 |  50 |  60 |  80 |  90 | 100
@@ -38,8 +39,16 @@ rb_tbl = [ ...
     11   24   38   51   65   78  106  133  162  217  245  273
      0   11   18   24   31   38   51   65   79  107  121  135];
 
+% set primary numerical parameters
+if sim_option.override
+    num_rb = sim_option.num_rb;
+    scs_khz = sim_option.scs_khz;
+    num_slot = sim_option.num_slot;
+else
+    num_rb = rb_tbl(idx_scs, idx_bw);           % number of rbs
+end
+
 % set numerical parameters
-num_rb = rb_tbl(idx_scs, idx_bw);           % number of rbs
 num_subc_rb = 12;                           % number of subcarriers per rb
 num_subc_bw = num_rb*num_subc_rb;           % number of subcarriers in bandwidth
 num_fft = 2^ceil(log2(num_subc_bw));        % fft size
@@ -54,9 +63,9 @@ if strcmp(usr_option, 'su')                 % full spreading
     num_slot_usr = num_slot;                % number of slots per user
     list_usr = 1;                           % user index list
 elseif strcmp(usr_option, 'mu')
-    num_rb_usr = 3;                         % number of resource blocks per user
-    num_slot_usr = 1;                       % number of slots per user
-    list_usr = [1 2 3 4];                   % user index list
+    num_rb_usr = 1;                         % number of resource blocks per user
+    num_slot_usr = 4;                       % number of slots per user
+    list_usr = 1; % [1 2 3 4];                   % user index list
 else
     error('''test_usr'' shall be either ''su'' or ''mu''.\n')
 end

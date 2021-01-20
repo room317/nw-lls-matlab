@@ -4,19 +4,21 @@
 %       - ch_onetap_usr_tf: time-frequency channel matrix (diagonal elements only)
 %       - ch_eff_usr_tf: time-frequency effective user channel matrix
 %       - ch_eff_usr_dd: delay-doppler effective user channel matrix
-%       - ch_mat_tf: time-frequency channel matrix (full matrix)
+%       - ch_fulltap_tf: time-frequency channel matrix (full matrix)
 %       - list_subc_usr: index vector of user subcarriers
 %       - list_ofdmsym_usr: index vector of user ofdm(otfs) symbols
 %       - chest_option: channel estimation option
 %       - cheq_option: channel equalization option
 %       - test_option: full-tap/one-tap equalization option
+% memo
+%   - 'ch_onetap_usr_dd' can be calculated from 'ch_onetap_usr_tf'.
 
-function [ch_onetap_usr_tf, ch_eff_usr_tf, ch_eff_usr_dd] = demap_real_ch(ch_mat_tf, list_subc_usr, list_ofdmsym_usr, chest_option, cheq_option, test_option)
+function [ch_onetap_usr_tf, ch_eff_usr_tf, ch_eff_usr_dd] = demap_real_ch(ch_fulltap_tf, list_subc_usr, list_ofdmsym_usr, chest_option, cheq_option, test_option)
 
 % demap user channel matrix
 nsubc_usr = length(list_subc_usr);
 nsym_usr = length(list_ofdmsym_usr);
-ch_mat_usr_tf = ch_mat_tf(list_subc_usr, list_subc_usr, list_ofdmsym_usr);
+ch_mat_usr_tf = ch_fulltap_tf(list_subc_usr, list_subc_usr, list_ofdmsym_usr);
 
 % generate real full-tap time-frequency channel matrix
 if (strcmp(chest_option, 'real') && test_option.fulltap_eq) || test_option.ch_mse

@@ -79,6 +79,7 @@ PI = mod(tc_prm(idx_tc_prm, 2) * (0 : K - 1)' + tc_prm(idx_tc_prm, 3) * (0 : K -
 % output
 nw_cc.C = C;                       % number of code block
 nw_cc.K = K;                       % number of bits per code block
+nw_cc.L = L;                       % crc length per code block
 nw_cc.F = F;                       % number of filler bits
 nw_cc.PI = PI;                     % turbo code internal interleaver
 nw_cc.num_iter_max = num_iter_max; % number of maximum iteration

@@ -1,6 +1,7 @@
 function u = rx_ratematch_r2(Zo, rm)
 
-num_cb = size(Zo, 2);       % number of code block
+% set the number of input code block
+num_cb = size(Zo, 2);    % support multi-channel
 
 % average
 len_unpunc_tbl = size(rm.punc_tbl(~rm.punc_tbl(:, 1)), 1);
@@ -19,7 +20,7 @@ end
 
 % bit collection and selection
 Ncb = rm.Kw;
-k0 = rm.nR * 2;
+k0 = rm.nR*2;
 
 Yo = zeros(Ncb, num_cb);
 punc_tbl_circ = circshift(rm.punc_tbl, -k0);
