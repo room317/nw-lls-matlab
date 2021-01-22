@@ -70,8 +70,8 @@ delay_profile_tdl_c_us = delay_profile_tdl_c_norm * delay_spread_rms_us;
 % power_profile_tdl_d_los_db = -0.2;
 % delay_profile_tdl_d_los_norm = 0;
 % delay_profile_tdl_d_los_us = delay_profile_tdl_d_los_norm * delay_spread_rms;
-power_profile_tdl_d_db = [-13.5 -18.8 -21 -22.8 -17.9 -20.1 -21.9 -22.9 -27.8 -23.6 -24.8 -30.0 -27.7];
-delay_profile_tdl_d_norm = [0 0.035 0.612 1.363 1.405 1.804 2.596 1.775 4.042 7.937 9.424 9.708 12.525];
+power_profile_tdl_d_db = [-0.2 -13.5 -18.8 -21 -22.8 -17.9 -20.1 -21.9 -22.9 -27.8 -23.6 -24.8 -30.0 -27.7];
+delay_profile_tdl_d_norm = [0 0 0.035 0.612 1.363 1.405 1.804 2.596 1.775 4.042 7.937 9.424 9.708 12.525];
 delay_profile_tdl_d_us = delay_profile_tdl_d_norm * delay_spread_rms_us;
 k_factor_tdl_d_db = 13.3;
 
@@ -79,8 +79,8 @@ k_factor_tdl_d_db = 13.3;
 % power_profile_tdl_e_los_db = -0.03;
 % delay_profile_tdl_e_los_norm = 0;
 % delay_profile_tdl_e_los_us = delay_profile_tdl_e_los_norm * delay_spread_rms;
-power_profile_tdl_e_db = [-22.03 -15.8 -18.1 -19.8 -22.9 -22.4 -18.6 -20.8 -22.6 -22.3 -25.6 -20.2 -29.8 -29.2];
-delay_profile_tdl_e_norm = [0 0.5133 0.5440 0.5630 0.5440 0.7112 1.9092 1.9293 1.9589 2.6426 3.7136 5.4524 12.0034 20.6519];
+power_profile_tdl_e_db = [-0.03 -22.03 -15.8 -18.1 -19.8 -22.9 -22.4 -18.6 -20.8 -22.6 -22.3 -25.6 -20.2 -29.8 -29.2];
+delay_profile_tdl_e_norm = [0 0 0.5133 0.5440 0.5630 0.5440 0.7112 1.9092 1.9293 1.9589 2.6426 3.7136 5.4524 12.0034 20.6519];
 delay_profile_tdl_e_us = delay_profile_tdl_e_norm * delay_spread_rms_us;
 k_factor_tdl_e_db = 22;
 
