@@ -17,7 +17,7 @@
 %   - real channel estimation with single tone pilot added: 2020.02.09
 %   - slot-based to user-frame-based simulation (user frame = multiple slots)
 
-function [tx_bit, tx_sym, tx_sym_rbs] = gen_tx_qamsym_usr_r1(sim, cc, rm, num, tx_crc, turbo_enc)
+function [tx_bit, tx_sym] = gen_tx_qamsym_usr_r1(sim, cc, rm, num, tx_crc, turbo_enc)
 
 % generate bit stream
 tx_bit = randi([0 1], sim.len_tb_bit, 1);
@@ -42,6 +42,10 @@ for idx_cb = 1:cc.C
     % rate match
     tx_bit_ratematch_cb = tx_ratematch_r2(tx_bit_enc_cb, idx_cb, rm);
     
+%     % temporary for otfs test
+%     tx_bit_enc_cb = repmat([tx_bit_crc_cb; tx_bit_crc_cb(1:4)], 3, 1);
+%     tx_bit_ratematch_cb = tx_bit_enc_cb(1:rm.E_true(idx_cb), :);
+    
     % modulate bit stream
     % accumulate output per code block serially
     tx_sym_serial_cb = qammod(tx_bit_ratematch_cb(:), 2^rm.Qm, 'InputType', 'bit', 'UnitAveragePower', true);
@@ -49,20 +53,28 @@ for idx_cb = 1:cc.C
     % simulate per user frame
     tx_sym_cb = reshape(tx_sym_serial_cb, num.num_qamsym_usr, []);
     tx_sym(:, sum(rm.num_usrfrm_cb(1:idx_cb-1))+1:sum(rm.num_usrfrm_cb(1:idx_cb))) = tx_sym_cb;
-end
-
-% initialize
-tx_sym_rbs = zeros(num.num_subc_usr, num.num_ofdmsym_usr, sum(rm.num_usrfrm_cb));
-
-% simulate per-user-frame tx process
-for idx_usrfrm = 1:sum(rm.num_usrfrm_cb)
-    % extract user frame data per user
-    tx_sym_data_usrfrm = squeeze(tx_sym(:, idx_usrfrm));
     
-    % map qam symbols to user physical resource blocks
-    [tx_sym_rbs_usrfrm, ~] = ofdm_sym_map(tx_sym_data_usrfrm, num);
-    tx_sym_rbs(:, :, idx_usrfrm) = tx_sym_rbs_usrfrm;
+%     if idx_cb == 1
+%         assignin('base', 'tx_bit_crc_cb', tx_bit_crc_cb)
+%         assignin('base', 'tx_bit_enc_cb', tx_bit_enc_cb)
+%         assignin('base', 'tx_bit_ratematch_cb', tx_bit_ratematch_cb)
+%         assignin('base', 'tx_sym_serial_cb', tx_sym_serial_cb)
+%         assignin('base', 'tx_sym_cb', tx_sym_cb)
+%     end
 end
+
+% % initialize
+% tx_sym_rbs = zeros(num.num_subc_usr, num.num_ofdmsym_usr, sum(rm.num_usrfrm_cb));
+% 
+% % simulate per-user-frame tx process
+% for idx_usrfrm = 1:sum(rm.num_usrfrm_cb)
+%     % extract user frame data per user
+%     tx_sym_data_usrfrm = squeeze(tx_sym(:, idx_usrfrm));
+%     
+%     % map qam symbols to user physical resource blocks
+%     [tx_sym_rbs_usrfrm, ~] = ofdm_sym_map(tx_sym_data_usrfrm, num);
+%     tx_sym_rbs(:, :, idx_usrfrm) = tx_sym_rbs_usrfrm;
+% end
 
 % % dump
 % assignin('base', 'tx_bit', tx_bit);

@@ -24,16 +24,14 @@ for idx_cb = 1:cc.C
     
     % serialize noise variance
     error_var_cb = reshape(error_var(:, sum(rm.num_usrfrm_cb(1:idx_cb-1))+1:sum(rm.num_usrfrm_cb(1:idx_cb))), [], 1);
-%     error_var_cb = abs(rx_sym_serial_cb-tx_sym_serial).^2;
+%     error_var_cb = abs(rx_sym_serial_cb-tx_sym_serial).^2;      % for genie-aided result
+%     error_var_cb = error_var;                             % for scalar input test
     
     % demap qam symbols
-    % noise_var_tmp = var(tx_sym_serial-rx_sym_serial);
-%     rx_bit_demod_cb = (-1) * qamdemod(rx_sym_serial_cb, 2^rm.Qm, 'UnitAveragePower', true, ...
-%         'OutputType', 'approxllr', 'NoiseVariance', error_var_cb);
-    
-    % test
     rx_bit_demod_cb = (-1) * qamdemod(rx_sym_serial_cb.', 2^rm.Qm, 'UnitAveragePower', true, ...
         'OutputType', 'approxllr', 'NoiseVariance', error_var_cb.');
+%     rx_bit_demod_cb = qamdemod(rx_sym_serial_cb.', 2^rm.Qm, 'UnitAveragePower', true, ...
+%         'OutputType', 'bit');                           % for uncoded test
     rx_bit_demod_cb = rx_bit_demod_cb(:);
     
     % rate match
@@ -43,8 +41,20 @@ for idx_cb = 1:cc.C
     % turbo decode data
     rx_bit_dec_cb = turbo_dec(rx_bit_ratematch_cb);
     
+%     % temporary for otfs test
+%     rx_bit_ratematch_cb = rx_bit_demod_cb;              % for uncoded test
+%     rx_bit_dec_cb = rx_bit_ratematch_cb(1:cc.K, :);     % for uncoded test
+    
     % detect crc
     [rx_bit_crc_removed_cb(:, idx_cb), rx_crc_error_cb(1, idx_cb)] = rx_crc(rx_bit_dec_cb);
+    
+%     if idx_cb == 1
+%         assignin('base', 'rx_sym_cb', rx_sym_cb)
+%         assignin('base', 'rx_sym_serial_cb', rx_sym_serial_cb)
+%         assignin('base', 'rx_bit_demod_cb', rx_bit_demod_cb)
+%         assignin('base', 'rx_bit_ratematch_cb', rx_bit_ratematch_cb)
+%         assignin('base', 'rx_bit_dec_cb', rx_bit_dec_cb)
+%     end
 end
 
 % buffer per code block

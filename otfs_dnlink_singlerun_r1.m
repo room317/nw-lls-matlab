@@ -1,7 +1,9 @@
-% run a single ofdm symbol
+% run a single otfs symbol
 % - sim, cc, rm, num: simulation parameters
 % - snr_db: snr(db)
 % - ch: channel parameter
+% - eq_dd: delay-doppler channel estimation (true/false)
+% - test_dd_pilot: whole resource plane is allocated to pilot, for test only (true/false)
 % created: 2019.10.15
 % modified:
 % - channel coding added: 2019.10.21
@@ -9,13 +11,16 @@
 % - structure updated: 2019.10.23
 % - rate matching bug fixed: 2019.11.08
 % - slot buffer fixed: 2019.12.10
-% - real channel estimation with single tone pilot added: 2020.02.09
-% - real channel compensation in tf domain added: 2020.02.09
+% - eq_dd(delay-doppler channel estimation) added: 2020.01.09
+% - test_dd_pilot added: 2020.01.09
+% - real channel estimation with single tone pilot added: 2020.02.19
+% - real channel compensation in tf domain added: 2020.02.19
+% - real channel compensation in dd domain added: 2020.02.19
 % - variable name changed: 2020.06.09
 % - slot-based to user-frame-based simulation (user frame = multiple slots)
 % - full-tap real channel regeneration added: 2020.0908
 
-function [pkt_error, tx_papr, ch_mse, sym_err_var] = ofdm_dnlink_singlerun_r2(sim, cc, rm, num, snr_db, tx_crc, rx_crc, turbo_enc, turbo_dec, fading_ch, chest_option, cheq_option, test_option)
+function [pkt_error, tx_papr, ch_mse, sym_err_var] = otfs_dnlink_singlerun_r1(sim, cc, rm, num, snr_db, tx_crc, rx_crc, turbo_enc, turbo_dec, fading_ch, chest_option, cheq_option, test_option)
 
 % calculate snr and noise variance
 %   - snr_db(input) is consigered to be the snr(db) for user data in delay-doppler domain
@@ -30,7 +35,8 @@ noise_var = 10^((-0.1)*snr_db);
 % initialize
 tx_bit = zeros(sim.len_tb_bit, num.num_usr);
 tx_sym = zeros(num.num_qamsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
-tx_sym_rbs = zeros(num.num_subc_usr, num.num_ofdmsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
+tx_sym_rbs_dd = zeros(num.num_delay_usr, num.num_doppler_usr, sum(rm.num_usrfrm_cb), num.num_usr);
+tx_sym_rbs_tf = zeros(num.num_subc_usr, num.num_ofdmsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
 tx_sym_bw = zeros(num.num_subc_bw, num.num_ofdmsym, sum(rm.num_usrfrm_cb));
 
 % generate and map per-user qam symbols
@@ -53,11 +59,19 @@ for idx_usr = 1:num.num_usr
         tx_sym_data_usrfrm = squeeze(tx_sym_usr(:, idx_usrfrm));
         
         % map qam symbols to user physical resource blocks
-        [tx_sym_rbs_usrfrm, ~] = ofdm_sym_map(tx_sym_data_usrfrm, num);
-        tx_sym_rbs(:, :, idx_usrfrm, idx_usr) = tx_sym_rbs_usrfrm;
+        if strcmp(chest_option, 'dd_tone')
+            [tx_sym_rbs_usrfrm_dd, ~] = otfs_sym_map_r2(tx_sym_data_usrfrm, num, test_option);
+        else
+            tx_sym_rbs_usrfrm_dd = reshape(tx_sym_data_usrfrm, num.num_delay_usr, []);
+        end
+        tx_sym_rbs_dd(:, :, idx_usrfrm, idx_usr) = tx_sym_rbs_usrfrm_dd;
+        
+        % 2d sfft (otfs transform, from delay-doppler domain to freq-time domain)
+        tx_sym_rbs_usrfrm_tf = sqrt(num.num_doppler_usr/num.num_delay_usr)*fft(ifft(tx_sym_rbs_usrfrm_dd, [], 2), [], 1);
+        tx_sym_rbs_tf(:, :, idx_usrfrm, idx_usr) = tx_sym_rbs_usrfrm_tf;
         
         % map user resource blocks
-        tx_sym_bw(list_subc_usr, list_ofdmsym_usr, idx_usrfrm) = tx_sym_rbs_usrfrm;
+        tx_sym_bw(list_subc_usr, list_ofdmsym_usr, idx_usrfrm) = tx_sym_rbs_usrfrm_tf;
     end
 end
 
@@ -140,14 +154,15 @@ end
 rx_bit = zeros(sim.len_tb_bit, num.num_usr);
 rx_crc_error = zeros(1, num.num_usr);
 rx_sym = zeros(num.num_qamsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
-rx_sym_rbs = zeros(num.num_subc_usr, num.num_ofdmsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
-rx_sym_rbs_eq = zeros(num.num_subc_usr, num.num_ofdmsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
+rx_sym_rbs_tf = zeros(num.num_subc_usr, num.num_ofdmsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
+rx_sym_rbs_dd_eq = zeros(num.num_delay_usr, num.num_doppler_usr, sum(rm.num_usrfrm_cb), num.num_usr);
 error_var = zeros(num.num_qamsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
 if ~test_option.awgn && test_option.ch_mse
     if strcmp(chest_option, 'real')
         ch_real_eff_tf = zeros(num.num_subc_usr*num.num_ofdmsym_usr, num.num_subc_usr*num.num_ofdmsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
     end
-    ch_est_rbs = zeros(num.num_subc_usr, num.num_ofdmsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
+    ch_est_rbs_tf = zeros(num.num_subc_usr, num.num_ofdmsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
+    ch_est_rbs_dd = zeros(num.num_delay_usr, num.num_doppler_usr, sum(rm.num_usrfrm_cb), num.num_usr);
 end
 
 % demodulate rx symbols per user and per user frame
@@ -159,8 +174,15 @@ for idx_usr = 1:num.num_usr
         % remove cp
         rx_ofdmsym = rx_ofdmsym_cp(num.num_cp+1:end,:);
         
+        % remove parts of received symbols
+        if isscalar(test_option.partial_reception) && ismember(test_option.partial_reception, 1:num.num_ofdmsym-1)
+            rx_ofdmsym_part = [rx_ofdmsym(:, 1:test_option.partial_reception) zeros(size(rx_ofdmsym, 1), num.num_ofdmsym-test_option.partial_reception)];
+        else
+            rx_ofdmsym_part = rx_ofdmsym;
+        end
+        
         % ofdm demodulate
-        rx_sym_nfft = (1/sqrt(num.num_fft))*fft(rx_ofdmsym, [], 1);
+        rx_sym_nfft = (1/sqrt(num.num_fft))*fft(rx_ofdmsym_part, [], 1);
         
         % demap symbols in bandwidth from fft range
         rx_sym_nfft_shift = fftshift(rx_sym_nfft, 1);
@@ -174,56 +196,93 @@ for idx_usr = 1:num.num_usr
         list_ofdmsym_usr = (idx_slot_usr-1)*num.num_ofdmsym_slot+1:(idx_slot_usr-1)*num.num_ofdmsym_slot+num.num_ofdmsym_usr;   % user ofdm symbol list
         
         % demap user resource block from whole bandwidth (temporary)
-        rx_sym_rbs_usr = rx_sym_bw(list_subc_usr, list_ofdmsym_usr);
-        rx_sym_rbs(:, :, idx_usrfrm, idx_usr) = rx_sym_rbs_usr;
+        rx_sym_rbs_usr_tf = rx_sym_bw(list_subc_usr, list_ofdmsym_usr);
+        rx_sym_rbs_tf(:, :, idx_usrfrm, idx_usr) = rx_sym_rbs_usr_tf;
         
         if test_option.awgn
+            % 2d inverse sfft
+            rx_sym_rbs_usr_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(rx_sym_rbs_usr_tf, [], 1), [], 2);
+            
             % equalize channel (no fading)
-            rx_sym_rbs_usr_eq = rx_sym_rbs_usr;
+            rx_sym_rbs_usr_eq_dd = rx_sym_rbs_usr_dd;
         else
             % demap user real channel (for real channel estimation or channel estimation error check)
             if test_option.ch_mse || strcmp(chest_option, 'real')
-                [ch_real_rbs_usr_tf, ch_real_eff_usr_tf, ~] = ...
+                [ch_real_rbs_usr_tf, ch_real_eff_usr_tf, ch_real_eff_usr_dd] = ...
                     demap_real_ch(squeeze(ch_real_mat_tf(:, :, :, idx_usrfrm, idx_usr)), list_subc_usr, list_ofdmsym_usr, chest_option, cheq_option, test_option);
-                
-%                 % temp
-%                 ch_real_rbs_usr_tf = ones(size(ch_real_rbs_usr_tf));
-%                 ch_real_eff_usr_tf = eye(size(ch_real_eff_usr_tf, 1));
-                
             else
                 ch_real_rbs_usr_tf = [];
                 ch_real_eff_usr_tf = [];
+                ch_real_eff_usr_dd = [];
             end
             
             % estimate channel (for uplink: channel estimation and equalization after demapping user physical resource block)
             if strcmp(chest_option, 'real')
-                ch_est_rbs_usr = ch_real_rbs_usr_tf;
+                % initialize rx in dd domain
+                rx_sym_rbs_usr_dd = [];
+                
+                % estimate channel
+                ch_est_rbs_usr_tf = ch_real_rbs_usr_tf;
+                ch_est_rbs_usr_dd = [];
+            elseif strcmp(chest_option, 'dd_tone')
+                % 2d inverse sfft for channel estimation only
+                rx_sym_rbs_usr_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(rx_sym_rbs_usr_tf, [], 1), [], 2);
+                
+                % estimate channel
+                ch_est_rbs_usr_dd = otfs_ch_est_dd_r1(rx_sym_rbs_usr_dd, num, test_option);
+                ch_est_rbs_usr_tf = [];
             else
-                ch_est_rbs_usr = ofdm_ch_est_r1(squeeze(tx_sym_rbs(:, :, idx_usrfrm, idx_usr)), rx_sym_rbs_usr, squeeze(tx_ofdmsym_faded(:, idx_usrfrm, idx_usr)), list_subc_usr, list_ofdmsym_usr, num, chest_option);
+                % initialize rx in dd domain
+                rx_sym_rbs_usr_dd = [];
+                
+                % estimate channel
+                ch_est_rbs_usr_tf = otfs_ch_est_tf_r2(squeeze(tx_sym_rbs_tf(:, :, idx_usrfrm, idx_usr)), squeeze(tx_ofdmsym_faded(:, idx_usrfrm, idx_usr)), list_subc_usr, list_ofdmsym_usr, num, chest_option);
+                ch_est_rbs_usr_dd = [];
             end
             
-%             % recalculate noise variance (considering interference)
-%             if strcmp(chest_option, 'real')
-%                 noise_var_intf = noise_var+mean(abs(squeeze(tx_sym_rbs(:, :, idx_usrfrm, idx_usr))).^2, 'all')*mean(abs(sum(ch_real_eff_usr_tf-diag(diag(ch_real_eff_usr_tf)), 2)).^2, 'all');
-% %                 noise_var_intf = mean(abs(squeeze(tx_sym_rbs(:, :, idx_usrfrm, idx_usr))).^2, 'all')*mean(abs(sum(ch_real_eff_usr_tf-diag(diag(ch_real_eff_usr_tf)), 2)).^2, 'all');
-%             else
-%                 noise_var_intf = noise_var;
-%             end
-            
             % equalize channel
-%             [rx_sym_rbs_usr_eq, noise_var_mat] = ofdm_ch_eq_r1(rx_sym_rbs_usr, ch_est_rbs_usr, ch_real_eff_usr_tf, num, noise_var_intf, chest_option, cheq_option, test_option);
-            [rx_sym_rbs_usr_eq, noise_var_mat] = ofdm_ch_eq_r1(rx_sym_rbs_usr, ch_est_rbs_usr, ch_real_eff_usr_tf, num, noise_var, chest_option, cheq_option, test_option);
+            if strcmp(cheq_option, 'ddeq_zf') || strcmp(cheq_option, 'ddeq_mmse')
+                % check delay-doppler rx signals
+                if isempty(rx_sym_rbs_usr_dd)
+                    % 2d inverse sfft both for demodulation
+                    rx_sym_rbs_usr_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(rx_sym_rbs_usr_tf, [], 1), [], 2);
+                end
+                
+                % equalize channel
+                [rx_sym_rbs_usr_eq_dd, noise_var_mat_dd] = otfs_ch_eq_dd_r4(rx_sym_rbs_usr_dd, ch_est_rbs_usr_tf, ch_est_rbs_usr_dd, ch_real_eff_usr_dd, num, noise_var, chest_option, cheq_option, test_option);
+            elseif strcmp(cheq_option, 'tfeq_zf') || strcmp(cheq_option, 'tfeq_mmse')
+                % equalize channel
+                [rx_sym_rbs_usr_eq_tf, noise_var_mat_dd] = otfs_ch_eq_tf_r4(rx_sym_rbs_usr_tf, ch_est_rbs_usr_tf, ch_est_rbs_usr_dd, ch_real_eff_usr_tf, ch_real_eff_usr_dd, num, noise_var, chest_option, cheq_option, test_option);
+                
+                % 2d inverse sfft for demodulation
+                rx_sym_rbs_usr_eq_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(rx_sym_rbs_usr_eq_tf, [], 1), [], 2);
+            else
+                error('cheq_option value must be one of these: {tfeq_zf, tfeq_mmse, ddeq_zf, ddeq_mmse}')
+            end
             
             % test: to check and calculate channel estimation error
             if test_option.ch_mse
                 ch_real_eff_tf(:, :, idx_usrfrm, idx_usr) = ch_real_eff_usr_tf;
-                ch_est_rbs(:, :, idx_usrfrm, idx_usr) = ch_est_rbs_usr;
+                
+                if isempty(ch_est_rbs_usr_tf)
+                    ch_est_rbs_usr_tf = sqrt(num.num_doppler_usr/num.num_delay_usr)*fft(ifft(ch_est_rbs_usr_dd, [], 2), [], 1);
+                end
+                ch_est_rbs_tf(:, :, idx_usrfrm, idx_usr) = ch_est_rbs_usr_tf;
+                
+                if isempty(ch_est_rbs_usr_dd)
+                    ch_est_rbs_usr_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(ch_est_rbs_usr_tf, [], 1), [], 2);
+                end
+                ch_est_rbs_dd(:, :, idx_usrfrm, idx_usr) = ch_est_rbs_usr_dd;
             end
         end
-        rx_sym_rbs_eq(:, :, idx_usrfrm, idx_usr) = rx_sym_rbs_usr_eq;
+        rx_sym_rbs_dd_eq(:, :, idx_usrfrm, idx_usr) = rx_sym_rbs_usr_eq_dd;
         
-        % demap data symbols
-        [rx_sym_data_usrfrm, ~] = ofdm_sym_demap(rx_sym_rbs_usr_eq, num);
+        % demap data qam symbols
+        if strcmp(chest_option, 'dd_tone')
+            [rx_sym_data_usrfrm, ~] = otfs_sym_demap_r2(rx_sym_rbs_usr_eq_dd, num, test_option);
+        else
+            rx_sym_data_usrfrm = rx_sym_rbs_usr_eq_dd(:);
+        end
         
         % buffer qam symbols
         rx_sym(:, idx_usrfrm, idx_usr) = rx_sym_data_usrfrm;
@@ -231,12 +290,17 @@ for idx_usr = 1:num.num_usr
         % calculate error variance
         if test_option.awgn
             noise_var_usrfrm = noise_var;
+        elseif strcmp(chest_option, 'dd_tone')
+            [noise_var_usrfrm, ~] = otfs_sym_demap_r2(noise_var_mat_dd, num, test_option);
         else
-            noise_var_usrfrm = ofdm_sym_demap(noise_var_mat, num);
+            noise_var_usrfrm = noise_var_mat_dd(:);
         end
 %         error_var_usr = noise_var./(abs(ch_est_rbs_usr).^2);
 %         [error_var_usrfrm, ~] = ofdm_sym_demap(error_var_usr, num);
 %         error_var(:, idx_usrfrm, idx_usr) = error_var_usrfrm;
+%         error_var(:, idx_usrfrm, idx_usr) = abs(tx_sym(:, idx_usrfrm, idx_usr)-rx_sym_data_usrfrm).^2;
+%         error_var(:, idx_usrfrm, idx_usr) = mean(abs(tx_sym(:, idx_usrfrm, idx_usr)-rx_sym_data_usrfrm).^2, 'all');
+%         error_var(:, idx_usrfrm, idx_usr) = 2*noise_var*ones(num.num_qamsym_usr, 1);
         error_var(:, idx_usrfrm, idx_usr) = noise_var_usrfrm;
     end
     
@@ -261,35 +325,43 @@ if ~test_option.awgn && test_option.ch_mse
     if strcmp(chest_option, 'real') && test_option.fulltap_eq
         ch_mse = zeros(1, num.num_usr);
     else
+        % generate tf channel
+        if isempty(ch_est_rbs_tf)
+            ch_est_rbs_tf = sqrt(num.num_doppler_usr/num.num_delay_usr)*fft(ifft(ch_est_rbs_dd, [], 2), [], 1);
+        end
+        
         % generate effective tf channel
-        ch_est_eff = zeros(num.num_subc_usr*num.num_ofdmsym_usr, num.num_subc_usr*num.num_ofdmsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
+        ch_est_eff_tf = zeros(num.num_subc_usr*num.num_ofdmsym_usr, num.num_subc_usr*num.num_ofdmsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
         for idx_usr = 1:num.num_usr
             for idx_usrfrm = 1:sum(rm.num_usrfrm_cb)
-                ch_est_eff(:, :, idx_usrfrm, idx_usr) = diag(reshape(ch_est_rbs(:, :, idx_usrfrm, idx_usr), [], 1));
+                ch_est_eff_tf(:, :, idx_usrfrm, idx_usr) = diag(reshape(ch_est_rbs_tf(:, :, idx_usrfrm, idx_usr), [], 1));
             end
         end
         
         % calculate channel estimation error (per time-frequency grid)
-        ch_mse = mean(abs(ch_real_eff_tf-ch_est_eff).^2, [1 2 3])*num.num_subc_usr*num.num_ofdmsym_usr;
+        ch_mse = mean(abs(ch_real_eff_tf-ch_est_eff_tf).^2, [1 2 3])*num.num_subc_usr*num.num_ofdmsym_usr;
         
 %         fprintf('ch mse:')
 %         fprintf(' %10.6f', ch_mse)
 %         fprintf('\n')
 %         assignin('base', 'ch_real_eff_tf', ch_real_eff_tf)
-%         assignin('base', 'ch_est_eff', ch_est_eff)
+%         assignin('base', 'ch_est_eff_tf', ch_est_eff_tf)
     end
     for idx_usr=1:num.num_usr
         fprintf('user %d:    tf channel est rmse: %6.3f\n', idx_usr, sqrt(ch_mse(1, idx_usr)))
 %         for idx_usrfrm = 1:sum(rm.num_usrfrm_cb)
 %             test_ch_real_onetap_tf = reshape(diag(ch_real_eff_tf(:, :, idx_usrfrm, idx_usr)), num.num_subc_usr, num.num_ofdmsym_usr);
+%             test_ch_real_onetap_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(test_ch_real_onetap_tf, [], 1), [], 2);
 %             if strcmp(chest_option, 'real') && test_option.fulltap_eq
 %                 test_ch_est_onetap_tf = test_ch_real_onetap_tf;
+%                 test_ch_est_onetap_dd = test_ch_real_onetap_dd;
 %             else
-%                 test_ch_est_onetap_tf = ch_est_rbs(:, :, idx_usrfrm, idx_usr);
+%                 test_ch_est_onetap_tf = ch_est_rbs_tf(:, :, idx_usrfrm, idx_usr);
+%                 test_ch_est_onetap_dd = ch_est_rbs_dd(:, :, idx_usrfrm, idx_usr);
 %             end
-%             test_tx_sym = tx_sym_rbs(:, :, idx_usrfrm, idx_usr);
-%             test_rx_sym = rx_sym_rbs(:, :, idx_usrfrm, idx_usr);
-%             test_rx_sym_eq = rx_sym_rbs_eq(:, :, idx_usrfrm, idx_usr);
+%             test_tx_sym_dd = tx_sym_rbs_dd(:, :, idx_usrfrm, idx_usr);
+%             test_rx_sym_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(rx_sym_rbs_tf(:, :, idx_usrfrm, idx_usr), [], 1), [], 2);
+%             test_rx_sym_eq_dd = rx_sym_rbs_dd_eq(:, :, idx_usrfrm, idx_usr);
 %             
 %             figure
 %             subplot(2, 2, 1), mesh(1:size(test_ch_real_onetap_tf, 2), 1:size(test_ch_real_onetap_tf, 1), real(test_ch_real_onetap_tf))
@@ -298,12 +370,18 @@ if ~test_option.awgn && test_option.ch_mse
 %             subplot(2, 2, 4), mesh(1:size(test_ch_est_onetap_tf, 2), 1:size(test_ch_est_onetap_tf, 1), imag(test_ch_est_onetap_tf))
 %             
 %             figure
-%             subplot(2, 3, 1), mesh(1:size(test_tx_sym, 2), 1:size(test_tx_sym, 1), real(test_tx_sym))
-%             subplot(2, 3, 4), mesh(1:size(test_tx_sym, 2), 1:size(test_tx_sym, 1), imag(test_tx_sym))
-%             subplot(2, 3, 2), mesh(1:size(test_rx_sym, 2), 1:size(test_rx_sym, 1), real(test_rx_sym))
-%             subplot(2, 3, 5), mesh(1:size(test_rx_sym, 2), 1:size(test_rx_sym, 1), imag(test_rx_sym))
-%             subplot(2, 3, 3), mesh(1:size(test_rx_sym_eq, 2), 1:size(test_rx_sym_eq, 1), real(test_rx_sym_eq))
-%             subplot(2, 3, 6), mesh(1:size(test_rx_sym_eq, 2), 1:size(test_rx_sym_eq, 1), imag(test_rx_sym_eq))
+%             subplot(2, 2, 1), mesh(1:size(test_ch_real_onetap_dd, 2), 1:size(test_ch_real_onetap_dd, 1), real(fftshift(fftshift(test_ch_real_onetap_dd, 1), 2)))
+%             subplot(2, 2, 3), mesh(1:size(test_ch_real_onetap_dd, 2), 1:size(test_ch_real_onetap_dd, 1), imag(fftshift(fftshift(test_ch_real_onetap_dd, 1), 2)))
+%             subplot(2, 2, 2), mesh(1:size(test_ch_est_onetap_dd, 2), 1:size(test_ch_est_onetap_dd, 1), real(fftshift(fftshift(test_ch_est_onetap_dd, 1), 2)))
+%             subplot(2, 2, 4), mesh(1:size(test_ch_est_onetap_dd, 2), 1:size(test_ch_est_onetap_dd, 1), imag(fftshift(fftshift(test_ch_est_onetap_dd, 1), 2)))
+%             
+%             figure
+%             subplot(2, 3, 1), mesh(1:size(test_tx_sym_dd, 2), 1:size(test_tx_sym_dd, 1), real(test_tx_sym_dd))
+%             subplot(2, 3, 4), mesh(1:size(test_tx_sym_dd, 2), 1:size(test_tx_sym_dd, 1), imag(test_tx_sym_dd))
+%             subplot(2, 3, 2), mesh(1:size(test_rx_sym_dd, 2), 1:size(test_rx_sym_dd, 1), real(test_rx_sym_dd))
+%             subplot(2, 3, 5), mesh(1:size(test_rx_sym_dd, 2), 1:size(test_rx_sym_dd, 1), imag(test_rx_sym_dd))
+%             subplot(2, 3, 3), mesh(1:size(test_rx_sym_eq_dd, 2), 1:size(test_rx_sym_eq_dd, 1), real(test_rx_sym_eq_dd))
+%             subplot(2, 3, 6), mesh(1:size(test_rx_sym_eq_dd, 2), 1:size(test_rx_sym_eq_dd, 1), imag(test_rx_sym_eq_dd))
 %             pause
 %         end
     end
@@ -331,7 +409,8 @@ end
 % % dump
 % assignin('base', 'tx_bit', tx_bit);
 % assignin('base', 'tx_sym', tx_sym);
-% assignin('base', 'tx_sym_rbs', tx_sym_rbs);
+% assignin('base', 'tx_sym_rbs_dd', tx_sym_rbs_dd);
+% assignin('base', 'tx_sym_rbs_tf', tx_sym_rbs_tf);
 % assignin('base', 'tx_sym_bw', tx_sym_bw);
 % assignin('base', 'tx_sym_nfft_shift', tx_sym_nfft_shift);
 % assignin('base', 'tx_sym_nfft', tx_sym_nfft);
@@ -346,8 +425,8 @@ end
 % assignin('base', 'rx_sym_nfft', rx_sym_nfft);
 % assignin('base', 'rx_sym_nfft_shift', rx_sym_nfft_shift);
 % assignin('base', 'rx_sym_bw', rx_sym_bw);
-% assignin('base', 'rx_sym_rbs', rx_sym_rbs);
-% assignin('base', 'rx_sym_rbs_eq', rx_sym_rbs_eq);
+% assignin('base', 'rx_sym_rbs_tf', rx_sym_rbs_tf);
+% assignin('base', 'rx_sym_rbs_dd_eq', rx_sym_rbs_dd_eq);
 % assignin('base', 'rx_sym', rx_sym);
 % assignin('base', 'rx_bit', rx_bit);
 % 
@@ -356,9 +435,10 @@ end
 %     if strcmp(chest_option, 'real')
 %         assignin('base', 'ch_real_eff_tf', ch_real_eff_tf);
 %     end
-%     assignin('base', 'ch_est_rbs', ch_est_rbs);
+%     assignin('base', 'ch_est_rbs_tf', ch_est_rbs_tf);
+%     assignin('base', 'ch_est_rbs_dd', ch_est_rbs_dd);
 %     assignin('base', 'ch_path_gain_usr', ch_path_gain_usr);
-%     assignin('base', 'noise_var_mat', noise_var_mat)
+%     assignin('base', 'noise_var_mat_dd', noise_var_mat_dd)
 %     assignin('base', 'noise_var_usrfrm', noise_var_usrfrm)
 % end
 % assignin('base', 'snr_db_adj', snr_db_adj);

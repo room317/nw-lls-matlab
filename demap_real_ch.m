@@ -32,7 +32,7 @@ else
 end
 
 % generate real full-tap delay-doppler channel matrix
-if strcmp(chest_option, 'real') && test_option.fulltap_eq && (strcmp(cheq_option, 'ddeq_zf') || strcmp(cheq_option, 'ddeq_mmse'))
+if (strcmp(chest_option, 'real') && test_option.fulltap_eq && (strcmp(cheq_option, 'ddeq_zf') || strcmp(cheq_option, 'ddeq_mmse'))) || test_option.ch_mse
     % generate sfft matrix
     % idft_column = kron(eye(nsym), conj(dftmtx(nbw))/sqrt(nbw));
     % dft_row = kron(dftmtx(nsym)/sqrt(nsym), eye(nbw));

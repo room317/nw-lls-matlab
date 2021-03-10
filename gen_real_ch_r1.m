@@ -19,9 +19,12 @@
 function [ch_mat_t, ch_fulltap_tf, ch_onetap_usr_tf, ch_eff_usr_tf, ch_eff_usr_dd] = gen_real_ch_r1(ch_obj, ch_pg, nfft, ncp, nbw, nsym, list_subc_usr, list_ofdmsym_usr, demap_usr, test_option)
 
 % get channel object info
-ch_info = info(ch_obj);
-ch_filter = ch_info.ChannelFilterCoefficients;    % ch_filter_coeff: channel filter coefficient per path
-npath = length(ch_obj.PathDelays);                % num_path: number of path
+% ch_info = info(ch_obj);
+% ch_filter = ch_info.ChannelFilterCoefficients;    % ch_filter_coeff: channel filter coefficient per path
+% npath = length(ch_obj.PathDelays);                % num_path: number of path
+ch_filter = getPathFilters(ch_obj);    % ch_filter_coeff: channel filter coefficient per path
+ch_filter = ch_filter.';
+npath = size(ch_pg, 2);
 
 % initialize
 nfilter = size(ch_filter, 2);
