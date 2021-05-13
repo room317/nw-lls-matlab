@@ -61,7 +61,7 @@ function [tx_sym_rbs_dd, tx_sym_pilot_usrfrm] = otfs_sym_map_r2(tx_sym_data_usrf
 if test_option.otfs_map_plan == 1 || test_option.otfs_map_plan == 2 || test_option.otfs_map_plan == 3   % use impulse pilot
     
     % set power for papr reduction
-    if test_option.otfs_pilot_impulse_pwr_reduction
+    if test_option.otfs_pilot_pwr_set
         % reduce 2d-impulse pilot symbol power and boost data symbol power
         % set power as 'time domain' pilot impulse not to exceed average data power for papr reduction
         pwr_data = (num.num_delay_usr*num.num_doppler_usr)/ ...

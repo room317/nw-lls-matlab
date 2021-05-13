@@ -1,3 +1,5 @@
+% nw_num generates numerical parameters(numerologies) and constants
+
 function nw_num = nw_num_prm_r1(scs_khz, bw_mhz, num_slot, waveform, chest_option, usr_option, sim_option)
 
 % timing parameter reference
@@ -118,10 +120,13 @@ if strcmp(waveform, 'ofdm')    % ofdm
     % set unused parameters
     num_doppler_usr = [];
     num_delay_usr = [];
+    num_doppler_pilot_half_usr = [];
+    num_delay_pilot_half_usr = [];
     num_doppler_pilot_usr = [];
     num_delay_pilot_usr = [];
     num_doppler_guard_usr = [];
-    num_delay_guard_usr = [];
+    num_delay_guard_a_usr = [];
+    num_delay_guard_b_usr = [];
     num_doppler_data_usr = [];
     num_delay_data_usr = [];
 else
@@ -129,18 +134,24 @@ else
     % set pilot resource ratio (otfs pilot setup)
     %   - num. otfs pilot(including guard) qam symbols = num. ofdm pilot qam symbols
     %     ex) 600*2 for ofdm (14.29%) and 86*14 for otfs (14.33%)
-    delay_pilot_ratio = 0.4;        % num_delay_pilot/num_delay_data (40% of available delay grids, even number)
-    doppler_pilot_ratio = 1.0;      % num_doppler_pilot/num_doppler_data (100% of available doppler grids)
-    delay_guard_ratio = 0.2;        % num_delay_guard/num_delay_pilot (20% of pilot delay grids)
-    doppler_guard_ratio = 0.2;      % num_doppler_guard/num_doppler_pilot (20% of pilot doppler grids)
+    delay_pilot_ratio = 0.35;        % num_delay_pilot/num_delay_data (40% of available delay grids, even number)
+    doppler_pilot_ratio = 0.71;      % num_doppler_pilot/num_doppler_data (100% of available doppler grids)
+    delay_guard_a_ratio = 0.37;        % num_delay_guard/num_delay_pilot (20% of pilot delay grids)
+    delay_guard_b_ratio = 0.13;        % num_delay_guard/num_delay_pilot (20% of pilot delay grids)
+    doppler_guard_ratio = 0.25;      % num_doppler_guard/num_doppler_pilot (20% of pilot doppler grids)
     
     % user parameters for otfs
     num_doppler_usr = num_ofdmsym_usr;              % corresponds to ofdm symbols (fixed)
     num_delay_usr = num_subc_usr;                   % corresponds to subcarriers (fixed)
-    num_doppler_pilot_usr = double(strcmp(chest_option, 'dd_tone'))*round(num_doppler_usr*(doppler_pilot_ratio/2))*2;           % number of doppler grids with pilots
-    num_delay_pilot_usr = double(strcmp(chest_option, 'dd_tone'))*round(num_delay_usr*(delay_pilot_ratio/2))*2;                 % number of delay grids with pilots
+    num_doppler_pilot_half_usr = double(strncmp(chest_option, 'dd_', 3))* ...
+        round(num_doppler_usr*(doppler_pilot_ratio/2));             % number of half doppler grids with pilots (for complementary sequence pilot)
+    num_delay_pilot_half_usr = double(strncmp(chest_option, 'dd_', 3))* ...
+        round(num_delay_usr*(delay_pilot_ratio/2));                 % number of half delay grids with pilots (for complementary sequence pilot)
+    num_doppler_pilot_usr = num_doppler_pilot_half_usr*2;           % number of doppler grids with pilots
+    num_delay_pilot_usr = num_delay_pilot_half_usr*2;               % number of delay grids with pilots
     num_doppler_guard_usr = double(num_doppler_usr~=num_doppler_pilot_usr)*round(num_doppler_pilot_usr*doppler_guard_ratio);    % number of doppler grids for guard (set 0 for full-span pilot)
-    num_delay_guard_usr = double(num_delay_usr~=num_delay_pilot_usr)*round(num_delay_pilot_usr*delay_guard_ratio);              % number of delay grids for guard (set even number)
+    num_delay_guard_a_usr = double(num_delay_usr~=num_delay_pilot_usr)*round(num_delay_pilot_usr*delay_guard_a_ratio);              % number of delay grids for guard (set even number)
+    num_delay_guard_b_usr = double(num_delay_usr~=num_delay_pilot_usr)*round(num_delay_pilot_usr*delay_guard_b_ratio);              % number of delay grids for guard (set even number)
     num_doppler_data_usr = num_doppler_usr-num_doppler_pilot_usr;   % number of doppler grids without pilot and guard (set even number)
     num_delay_data_usr = num_delay_usr-num_delay_pilot_usr;         % number of delay grids without pilot and guard (set even number)
     
@@ -162,6 +173,20 @@ end
 %   - len_frame = len_rb_sym_user * (nfft + num_cp);
 %   - t_usrfrm = (length of 1 symbol + CP) * number of symbol * length of symbol
 t_usrfrm = (num_fft+num_cp)*num_ofdmsym/sample_rate;   % transmission time interval (sec)
+
+% generate sfft matrix
+% 1. sfft_mtx: unitary & symmetric & ! hermitian matrix
+% 2. isfft_mtx = sfft_mtx'
+%   1) isfft_mtx = (num_delay/num_doppler)*sfft_mtx';
+% 3. how to generate
+%   1) idft_column = kron(eye(nsym), conj(dftmtx(nbw))/sqrt(nbw));
+%   2) dft_row = kron(dftmtx(nsym)/sqrt(nsym), eye(nbw));
+%   3) sfft_mtx = dft_row*idft_column;
+% 4. scale
+%   1) sfft : sqrt(nsubc/nsym)*sfft_mtx;
+%   2) isfft: sqrt(nsym/nsubc)*isfft_mtx;
+sfft_mtx = kron(dftmtx(num_ofdmsym_usr), conj(dftmtx(num_subc_usr))/num_subc_usr);       % kron(A, B)*kron(C, D) = kron(AC, BD)
+isfft_mtx = kron(conj(dftmtx(num_ofdmsym_usr))/num_ofdmsym_usr, dftmtx(num_subc_usr));     % inv(kron(A, B)) = kron(inv(A), inv(B))
 
 % output
 % nw_num.nfft = nfft;
@@ -213,11 +238,17 @@ nw_num.num_ofdmsym_data_usr = num_ofdmsym_data_usr;
 
 nw_num.num_doppler_usr = num_doppler_usr;
 nw_num.num_delay_usr = num_delay_usr;
-nw_num.num_doppler_pilot_usr = num_doppler_pilot_usr;
-nw_num.num_delay_pilot_usr = num_delay_pilot_usr;
+nw_num.num_doppler_pilot_half_usr = num_doppler_pilot_half_usr;
+nw_num.num_delay_pilot_half_usr = num_delay_pilot_half_usr;
+nw_num.num_doppler_pilot_usr = num_doppler_pilot_usr;       % always even number
+nw_num.num_delay_pilot_usr = num_delay_pilot_usr;           % always even number
 nw_num.num_doppler_guard_usr = num_doppler_guard_usr;
-nw_num.num_delay_guard_usr = num_delay_guard_usr;
+nw_num.num_delay_guard_a_usr = num_delay_guard_a_usr;
+nw_num.num_delay_guard_b_usr = num_delay_guard_b_usr;
 nw_num.num_doppler_data_usr = num_doppler_data_usr;
 nw_num.num_delay_data_usr = num_delay_data_usr;
+
+nw_num.sfft_mtx = sfft_mtx;
+nw_num.isfft_mtx = isfft_mtx;
 
 end

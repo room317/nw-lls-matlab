@@ -1,5 +1,8 @@
 % test_dd_basic script
-%   - test channel estimation error with respect to snr
+%   - v0: test channel estimation error with respect to the position of the
+%     pilot tone
+%   - v1: test channel estimation error with respect to the number of received symbols
+%   - v2: test channel estimation error with respect to snr
 % created: 2020.12.03
 % modified:
 %   -
@@ -11,16 +14,27 @@ test_seed = -1;
 test_partial = false;
 
 % set simulation parameters
-NumSim = 1000;
+NumSim = 10;
 ListSNR = 0:2:20;
 
-% set numerical parameters
+% set numerology
 scs_khz = 60;
 bw_mhz = 5;
 num_slot = 4;
-test_pilot = 'impulse';
-test_pilot_pos = {[0, 0]}; % {[0, 0], [0, 7]};
-test_seq_len = 32;
+
+% set channel estimation options
+% test_pilot = 'data';                % for 'data'
+% test_pilot_pos = {};                % for 'data'
+% test_seq_len = 0;                   % for 'data'
+% test_pilot = 'impulse';             % for 'impulse'
+% test_pilot_pos = {[0, 0]};          % for 'impulse'
+% test_seq_len = 0;                   % for 'impulse'
+% test_pilot = 'zc';                  % for 'zc'
+% test_pilot_pos = {[0, 0]};          % for 'zc'
+% test_seq_len = 37;                  % for 'zc'
+test_pilot = 'golay';               % for 'golay'
+test_pilot_pos = {[0, 0], [0, 7]};  % for 'golay'
+test_seq_len = 32;                  % for 'golay'
 
 % print simulation result
 fprintf('  Test in progress: %6.2f %%', 0);

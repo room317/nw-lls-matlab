@@ -1,5 +1,8 @@
 % test_dd_basic script
-%   - test channel estimation error with respect to the number of received symbols
+%   - v0: test channel estimation error with respect to the position of the
+%     pilot tone
+%   - v1: test channel estimation error with respect to the number of received symbols
+%   - v2: test channel estimation error with respect to snr
 % created: 2020.07.19
 % modified:
 %   -

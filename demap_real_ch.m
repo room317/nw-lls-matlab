@@ -13,11 +13,15 @@
 % memo
 %   - 'ch_onetap_usr_dd' can be calculated from 'ch_onetap_usr_tf'.
 
-function [ch_onetap_usr_tf, ch_eff_usr_tf, ch_eff_usr_dd] = demap_real_ch(ch_fulltap_tf, list_subc_usr, list_ofdmsym_usr, chest_option, cheq_option, test_option)
+function [ch_onetap_usr_tf, ch_eff_usr_tf, ch_eff_usr_dd] = demap_real_ch(ch_fulltap_tf, num, list_subc_usr, list_ofdmsym_usr, chest_option, cheq_option, test_option)
+
+% variables
+nsubc_usr = num.num_subc_usr;
+nsym_usr = num.num_ofdmsym_usr;
+sfft_mtx = num.sfft_mtx;
+isfft_mtx = num.isfft_mtx;
 
 % demap user channel matrix
-nsubc_usr = length(list_subc_usr);
-nsym_usr = length(list_ofdmsym_usr);
 ch_mat_usr_tf = ch_fulltap_tf(list_subc_usr, list_subc_usr, list_ofdmsym_usr);
 
 % generate real full-tap time-frequency channel matrix
@@ -32,14 +36,7 @@ else
 end
 
 % generate real full-tap delay-doppler channel matrix
-if (strcmp(chest_option, 'real') && test_option.fulltap_eq && (strcmp(cheq_option, 'ddeq_zf') || strcmp(cheq_option, 'ddeq_mmse'))) || test_option.ch_mse
-    % generate sfft matrix
-    % idft_column = kron(eye(nsym), conj(dftmtx(nbw))/sqrt(nbw));
-    % dft_row = kron(dftmtx(nsym)/sqrt(nsym), eye(nbw));
-    % sfft_mtx = dft_row*idft_column;
-    sfft_mtx = kron(dftmtx(nsym_usr), conj(dftmtx(nsubc_usr))/nsubc_usr);       % kron(A, B)*kron(C, D) = kron(AC, BD)
-    isfft_mtx = kron(conj(dftmtx(nsym_usr))/nsym_usr, dftmtx(nsubc_usr));     % inv(kron(A, B)) = kron(inv(A), inv(B))
-    
+if (strcmp(chest_option, 'real') && test_option.fulltap_eq && strncmp(cheq_option, 'ddeq_', 5)) || test_option.ch_mse
     % generate effective delay-doppler channel matrix
     % ch_eff_dd = sfft_mtx*ch_eff_tf/sfft_mtx;
     ch_eff_usr_dd = sfft_mtx*ch_eff_usr_tf*isfft_mtx;

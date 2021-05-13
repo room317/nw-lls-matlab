@@ -17,7 +17,7 @@ y2 = x2(rm.subblk_int_tbl+1, :);
 y3 = x3(rm.subblk_int_tbl+1, :);
 y23 = permute([y2 y3], [2 1 3]);
 
-% bit Collection and selection
+% bit collection and selection
 Yo = squeeze([y1; reshape(y23, [], 1, num_cb)]);
 k0 = rm.nR * 2;             % redundancy version number = 0
 

@@ -69,25 +69,31 @@ while 1
     nw_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, delay_spread_rms_us);
         
     % set test option
-    test_option.fading_only = false;        % no awgn noise when true
-    test_option.awgn = false;               % no fading when true
-    test_option.papr = false;               % papr test
-    test_option.ch_mse = false;             % channel mmse test
-    test_option.sym_err_var = false;        % symbol error variance test
-    test_option.ch_edge_interp = false;     % tf-channel edge interpolation test (no use)
-    test_option.partial_reception = nw_num.num_ofdmsym;   % partial reception test for latency enhancement (number of symbols received)
-    test_option.otfs_map_plan = 4;          % pilot resource mapping test (refer to 'otfs_sym_map_r2.m')
-    test_option.otfs_pilot_impulse_pwr_reduction = false;       % valid only when impulse pilot is used
-    test_option.otfs_pilot_spread_seq = zadoffChuSeq(1,37);     % pilot spread seq. (zadoff-chu sequence spreading)
-    test_option.otfs_pilot_seq_ones = zadoffChuSeq(1,37); % ones(37, 1);              % pilot spread seq. (all ones)
+    test_option.fading_only = false;                % no awgn noise when true
+    test_option.awgn = false;                        % no fading when true
+    test_option.papr = false;                       % papr test
+    test_option.ch_mse = true;                     % channel mmse test
+    test_option.sym_err_var = false;                % symbol error variance test
+    test_option.ch_tf_edge_interp = false;          % tf-channel edge interpolation test (no use)
+    test_option.ch_dd_guard_interp = false;         % guard interpolation for channel estimation
+    test_option.ch_est_xcorr_prune = false;          % channel estimation pilot resource pruning after sequence pilot xcorr
+    test_option.part_rx = nw_num.num_ofdmsym;       % partial reception test for latency enhancement (number of symbols received)
+%     test_option.otfs_pilot_plan = 'impulse';        % pilot resource mapping test (refer to 'otfs_sym_map_r3.m')
+    test_option.otfs_pilot_pwr_set = false;         % valid only when otfs_pilot_plan is 'impulse'
+    test_option.zc_seq_len = 37;                                    % zadoff-chu sequence length (37)
+    test_option.zc_seq = zadoffChuSeq(1,test_option.zc_seq_len);    % zadoff-chu sequence
+    test_option.golay_seq_len = 32;                                 % golay sequence length (32, 64, 128)
+    [Ga, Gb] = wlanGolaySequence(test_option.golay_seq_len);        % complementary golay sequence
+    test_option.golay_seq_a = Ga;                                   % complementary golay sequence
+    test_option.golay_seq_b = Gb;                                   % complementary golay sequence
     test_option.fulltap_eq = false;          % use full-tap real channel for equalization
     test_option.common_usr_ch = true;          % use common channel per user
     test_option.gpu_flag = false;           % use gpu for real channel generation
 %     test_option.otfs_pilot_spread_seq = exp(-1i*pi*25*(0:36).*(1:37)/37);
     
     % check test option
-    if test_option.otfs_pilot_impulse_pwr_reduction && ~(test_option.otfs_map_plan == 1 || test_option.otfs_map_plan == 2 || test_option.otfs_map_plan == 3)
-        error('To use ''otfs_pilot_impulse_pwr_reduction'', ''otfs_map_plan'' must be one of these: {1, 2, 3}')
+    if test_option.otfs_pilot_pwr_set && ~strcmp(test_option.otfs_pilot_plan, 'impulse')
+        error('To use ''otfs_pilot_pwr_set'', ''otfs_pilot_plan'' must be ''impulse''.')
     end
     
 %     % generate walsh-hadamard sequence
@@ -174,6 +180,7 @@ while 1
         sum_papr = 0;
         sum_ch_mse = zeros(1, nw_num.num_usr);
         sum_sym_err_var = zeros(1, nw_num.num_usr);
+        sum_ch_pwr = zeros(nw_num.num_delay_usr, nw_num.num_doppler_usr);
         
         for sim_idx = 1:num_sim
             
@@ -190,7 +197,7 @@ while 1
 %                     tx_crc, rx_crc, turbo_enc, turbo_dec, fading_ch, ...
 %                     chest_option, cheq_option, test_option);
             else                           % otfs
-                [pkt_error, tx_papr, ch_mse, sym_err_var] = ...
+                [pkt_error, tx_papr, ch_mse, sym_err_var, ch_est_rbs_dd] = ...
                     otfs_dnlink_singlerun_r1( ...
                     nw_sim, nw_cc, nw_rm, nw_num, snr_db, ...
                     tx_crc, rx_crc, turbo_enc, turbo_dec, fading_ch, ...
@@ -212,9 +219,10 @@ while 1
             % sum channel mse
             if test_option.ch_mse
                 sum_ch_mse = sum_ch_mse+ch_mse;
+                sum_ch_pwr = sum_ch_pwr+sum(abs(ch_est_rbs_dd).^2, [3 4]);
             end
             
-            % sum channel mse
+            % sum symbol errors
             if test_option.sym_err_var
                 sum_sym_err_var = sum_sym_err_var+sym_err_var;
             end
@@ -269,10 +277,17 @@ while 1
     for idx_usr = 1:nw_num.num_usr
         figure
         semilogy(nw_sim_result(:, 1), nw_sim_result(:, 2+idx_usr), '-bo')
-        xlabel('SNR (dB)'); ylabel('PER');
-        title('QAM over Fading Channel');
+        xlabel('SNR (dB)'), ylabel('PER'), title('QAM over Fading Channel')
         axis([nw_sim_result(1, 1) - 1 snr_db + 1 1e-4 1])
         grid minor
+    end
+    
+    if test_option.ch_mse
+        for idx_usr = 1:nw_num.num_usr
+            figure
+            mesh(1:nw_num.num_doppler_usr, 1:nw_num.num_delay_usr, sqrt(fftshift(fftshift(sum_ch_pwr, 1), 2)/(sim_cnt*(sum(nw_rm.num_usrfrm_cb)+nw_num.num_usr))))
+            xlabel('Doppler'), ylabel('Delay'), zlabel('Average Channel Amplitude'), title('Channel Estimation')
+        end
     end
 end
 

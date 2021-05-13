@@ -22,7 +22,7 @@ function [pkt_error, tx_papr, ch_mse, sym_err_var] = ofdm_dnlink_singlerun_r2(si
 %   - snr_db_adj is consigered to be the snr(db) in time domain wave in the air
 %   - noise_var is noise variance for user data in delay-doppler domain
 % snr_db_adj = snr_db+(10*log10((num.num_usr*num.num_rb_usr*num.num_slot_usr)/(num.num_rb*num.num_slot)))+(10*log10((num.num_subc_bw/num.num_fft)))-(10*log10((num.num_fft+num.num_cp)/num.num_fft));
-snr_db_adj = snr_db+(10*log10((num.num_usr*num.num_rb_usr*num.num_slot_usr)/(num.num_rb*num.num_slot)))+(10*log10(num.num_subc_bw/num.num_fft));
+% snr_db_adj = snr_db+(10*log10((num.num_usr*num.num_rb_usr*num.num_slot_usr)/(num.num_rb*num.num_slot)))+(10*log10(num.num_subc_bw/num.num_fft));
 noise_var = 10^((-0.1)*snr_db);
 
 %% base station (tx) operation
@@ -107,13 +107,14 @@ for idx_usr = 1:num.num_usr
         if test_option.fading_only
             rx_ofdmsym_serial(:, idx_usrfrm, idx_usr) = tx_ofdmsym_usr_faded;
         else
-            rx_ofdmsym_serial(:, idx_usrfrm, idx_usr) = awgn(tx_ofdmsym_usr_faded, snr_db_adj, 'measured');
+            rx_ofdmsym_serial(:, idx_usrfrm, idx_usr) = awgn(tx_ofdmsym_usr_faded, snr_db, 0);
+%             rx_ofdmsym_serial(:, idx_usrfrm, idx_usr) = awgn(tx_ofdmsym_usr_faded, snr_db_adj, 'measured');
 %             rx_ofdmsym_serial(:, idx_usrfrm, idx_usr) = tx_ofdmsym_usr_faded+(sqrt(1/2)*10^(-0.1*snr_db_adj)*complex(randn(size(tx_ofdmsym_usr_faded)), randn(size(tx_ofdmsym_usr_faded))));
         end
         
         % regenerate real channel
         if ~test_option.awgn && (test_option.ch_mse || strcmp(chest_option, 'real'))
-            [~, ch_real_mat_usr_tf, ~, ~, ~] = gen_real_ch_r1(fading_ch, ch_path_gain_usr, num.num_fft, num.num_cp, num.num_subc_bw, num.num_ofdmsym, [], [], false, test_option);
+            [~, ch_real_mat_usr_tf, ~, ~, ~] = gen_real_ch_r1(fading_ch, ch_path_gain_usr, num, [], [], false, test_option);
             ch_real_mat_tf(:, :, :, idx_usrfrm, idx_usr) = ch_real_mat_usr_tf;
         end
         
@@ -184,7 +185,7 @@ for idx_usr = 1:num.num_usr
             % demap user real channel (for real channel estimation or channel estimation error check)
             if test_option.ch_mse || strcmp(chest_option, 'real')
                 [ch_real_rbs_usr_tf, ch_real_eff_usr_tf, ~] = ...
-                    demap_real_ch(squeeze(ch_real_mat_tf(:, :, :, idx_usrfrm, idx_usr)), list_subc_usr, list_ofdmsym_usr, chest_option, cheq_option, test_option);
+                    demap_real_ch(squeeze(ch_real_mat_tf(:, :, :, idx_usrfrm, idx_usr)), num, list_subc_usr, list_ofdmsym_usr, chest_option, cheq_option, test_option);
                 
 %                 % temp
 %                 ch_real_rbs_usr_tf = ones(size(ch_real_rbs_usr_tf));

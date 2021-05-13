@@ -33,19 +33,22 @@ if strcmp(cheq_option, 'ddeq_zf')
     % one-tap equalization (matrix inversion)
     rx_sym_rbs_eq_vec_dd = ch_eff_dd\rx_sym_rbs_dd(:);
     rx_sym_rbs_eq_dd = reshape(rx_sym_rbs_eq_vec_dd, num.num_delay_usr, num.num_doppler_usr);
-        
-    % calculate noise variance
-    noise_var_mat_dd = noise_var*(abs(reshape(ch_eff_dd\ones(num.num_delay_usr*num.num_doppler_usr, 1), num.num_delay_usr, num.num_doppler_usr)).^2);
+    
+%     % calculate noise variance
+%     noise_var_mat_dd = noise_var*(abs(reshape(ch_eff_dd\ones(num.num_delay_usr*num.num_doppler_usr, 1), num.num_delay_usr, num.num_doppler_usr)).^2);
 elseif strcmp(cheq_option, 'ddeq_mmse')
     % full-tap equalization (matrix inversion)
     ch_eff_mmse_dd = ch_eff_dd'/(ch_eff_dd*ch_eff_dd'+noise_var*eye(num.num_delay_usr*num.num_doppler_usr));
     rx_sym_rbs_eq_vec_dd = ch_eff_mmse_dd*rx_sym_rbs_dd(:);
     rx_sym_rbs_eq_dd = reshape(rx_sym_rbs_eq_vec_dd, num.num_delay_usr, num.num_doppler_usr);
-        
-    % calculate noise variance
-    noise_var_mat_dd = noise_var*(abs(reshape(sum(ch_eff_mmse_dd, 2), num.num_delay_usr, num.num_doppler_usr)).^2);
+    
+%     % calculate noise variance
+%     noise_var_mat_dd = noise_var*(abs(reshape(sum(ch_eff_mmse_dd, 2), num.num_delay_usr, num.num_doppler_usr)).^2);
 else
     error('cheq_option value must be one of these: {ddeq_zf, ddeq_mmse}')
 end
+
+% calculate noise variance (common for both)
+noise_var_mat_dd = noise_var*abs(sum(ch_eff_dd, 2)).^2;
 
 end

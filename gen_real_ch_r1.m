@@ -16,7 +16,15 @@
 %     demap_usr: user demapping option (true: generate all output, false: generate 'ch_mat_tf' only)
 %     gpu_flag: use gpu when true
 
-function [ch_mat_t, ch_fulltap_tf, ch_onetap_usr_tf, ch_eff_usr_tf, ch_eff_usr_dd] = gen_real_ch_r1(ch_obj, ch_pg, nfft, ncp, nbw, nsym, list_subc_usr, list_ofdmsym_usr, demap_usr, test_option)
+function [ch_mat_t, ch_fulltap_tf, ch_onetap_usr_tf, ch_eff_usr_tf, ch_eff_usr_dd] = gen_real_ch_r1(ch_obj, ch_pg, num, list_subc_usr, list_ofdmsym_usr, demap_usr, test_option)
+
+% variables  
+nfft = num.num_fft;
+ncp = num.num_cp;
+nbw = num.num_subc_bw;
+nsym = num.num_ofdmsym;
+sfft_mtx = num.sfft_mtx;
+isfft_mtx = num.isfft_mtx;
 
 % get channel object info
 % ch_info = info(ch_obj);
@@ -94,13 +102,6 @@ if demap_usr
         ch_eff_usr_tf((idx_sym-1)*nsubc_usr+1:idx_sym*nsubc_usr, (idx_sym-1)*nsubc_usr+1:idx_sym*nsubc_usr) = ch_mat_usr_tf(:, :, idx_sym);
     end
     
-    % generate sfft matrix
-    % idft_column = kron(eye(nsym), conj(dftmtx(nbw))/sqrt(nbw));
-    % dft_row = kron(dftmtx(nsym)/sqrt(nsym), eye(nbw));
-    % sfft_mtx = dft_row*idft_column;
-    sfft_mtx = kron(dftmtx(nsym_usr), conj(dftmtx(nsubc_usr))/nsubc_usr);       % kron(A, B)*kron(C, D) = kron(AC, BD)
-    isfft_mtx = kron(conj(dftmtx(nsym_usr))/nsym_usr, dftmtx(nsubc_usr));     % inv(kron(A, B)) = kron(inv(A), inv(B))
-    
     % generate effective delay-doppler channel matrix
     % ch_eff_dd = sfft_mtx*ch_eff_tf/sfft_mtx;
     ch_eff_usr_dd = sfft_mtx*ch_eff_usr_tf*isfft_mtx;
@@ -115,7 +116,6 @@ end
 % assignin('base', 'ch_onetap_tf', ch_onetap_tf);
 % assignin('base', 'idft_column', idft_column);
 % assignin('base', 'dft_row', dft_row);
-% assignin('base', 'sfft_mtx', sfft_mtx);
 % assignin('base', 'ch_eff_tf', ch_eff_tf);
 % assignin('base', 'ch_eff_dd', ch_eff_dd);
 % pause

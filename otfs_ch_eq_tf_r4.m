@@ -15,6 +15,10 @@
 
 function [rx_sym_rbs_eq_tf, noise_var_mat_dd] = otfs_ch_eq_tf_r4(rx_sym_rbs_tf, ch_est_rbs_tf, ch_est_rbs_dd, ch_real_eff_tf, ch_real_eff_dd, num, noise_var, chest_option, cheq_option, test_option)
 
+% variables
+sfft_mtx = num.sfft_mtx;
+isfft_mtx = num.isfft_mtx;
+
 % equalize channel
 if strcmp(cheq_option, 'tfeq_zf')
     if strcmp(chest_option, 'real') && test_option.fulltap_eq
@@ -22,9 +26,9 @@ if strcmp(cheq_option, 'tfeq_zf')
         rx_sym_rbs_eq_vec_tf = ch_real_eff_tf\rx_sym_rbs_tf(:);
         rx_sym_rbs_eq_tf = reshape(rx_sym_rbs_eq_vec_tf, num.num_subc_usr, num.num_ofdmsym_usr);
         
-        % calculate noise variance
-        ch_inv_dd = reshape(sum(inv(ch_real_eff_dd), 2), num.num_delay_usr, num.num_doppler_usr);
-        noise_var_mat_dd = noise_var*(abs(ch_inv_dd).^2);
+%         % calculate noise variance
+%         ch_inv_dd = reshape(sum(inv(ch_real_eff_dd), 2), num.num_delay_usr, num.num_doppler_usr);
+%         noise_var_mat_dd = noise_var*(abs(ch_inv_dd).^2);
     else
         % check time-frequency channel
         if isempty(ch_est_rbs_tf)
@@ -35,23 +39,23 @@ if strcmp(cheq_option, 'tfeq_zf')
         % equalize channel (one-tap zf)
         rx_sym_rbs_eq_tf = rx_sym_rbs_tf./ch_est_rbs_tf;
         
-        % calculate noise variance
-        if isempty(ch_est_rbs_dd)
-            % 2d inverse sfft for channel transformation
-            ch_est_rbs_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(ch_est_rbs_tf, [], 1), [], 2);
-        end
-%         ch_inv_dd = reshape(sum(inv(gen_eff_ch(ch_est_rbs_dd)), 2), num.num_delay_usr, num.num_doppler_usr);
-%         ch_inv_dd = sum(ch_est_rbs_dd, 'all')*ones(num.num_delay_usr, num.num_doppler_usr)/sqrt(numel(ch_est_rbs_dd));  % simplified
-%         noise_var_mat_dd = noise_var*(abs(ch_inv_dd).^2);
-%         noise_var_mat_dd = noise_var/var(ch_est_rbs_dd, 1, 'all');
-        
-        
-%         ch_dd = gen_eff_ch(ch_est_rbs_dd);
-        ch_inv_dd = inv(gen_eff_ch(ch_est_rbs_dd));
-%         assignin('base', 'ch_dd', ch_dd)
-%         assignin('base', 'ch_inv_dd', ch_inv_dd)
-%         pause
-        noise_var_mat_dd = noise_var*sum(abs(ch_inv_dd).^2, 2);
+%         % calculate noise variance
+%         if isempty(ch_est_rbs_dd)
+%             % 2d inverse sfft for channel transformation
+%             ch_est_rbs_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(ch_est_rbs_tf, [], 1), [], 2);
+%         end
+% %         ch_inv_dd = reshape(sum(inv(gen_eff_ch(ch_est_rbs_dd)), 2), num.num_delay_usr, num.num_doppler_usr);
+% %         ch_inv_dd = sum(ch_est_rbs_dd, 'all')*ones(num.num_delay_usr, num.num_doppler_usr)/sqrt(numel(ch_est_rbs_dd));  % simplified
+% %         noise_var_mat_dd = noise_var*(abs(ch_inv_dd).^2);
+% %         noise_var_mat_dd = noise_var/var(ch_est_rbs_dd, 1, 'all');
+%         
+%         
+% %         ch_dd = gen_eff_ch(ch_est_rbs_dd);
+%         ch_inv_dd = inv(gen_eff_ch(ch_est_rbs_dd));
+% %         assignin('base', 'ch_dd', ch_dd)
+% %         assignin('base', 'ch_inv_dd', ch_inv_dd)
+% %         pause
+%         noise_var_mat_dd = noise_var*sum(abs(ch_inv_dd).^2, 2);
     end
 elseif strcmp(cheq_option, 'tfeq_mmse')
     if strcmp(chest_option, 'real') && test_option.fulltap_eq
@@ -62,12 +66,10 @@ elseif strcmp(cheq_option, 'tfeq_mmse')
         rx_sym_rbs_eq_vec_tf = ch_eff_mmse_tf*rx_sym_rbs_tf(:);
         rx_sym_rbs_eq_tf = reshape(rx_sym_rbs_eq_vec_tf, num.num_subc_usr, num.num_ofdmsym_usr);
         
-        % calculate noise variance
-        sfft_mtx = kron(dftmtx(nsym_usr), conj(dftmtx(nsubc_usr))/nsubc_usr);       % kron(A, B)*kron(C, D) = kron(AC, BD)
-        isfft_mtx = kron(conj(dftmtx(nsym_usr))/nsym_usr, dftmtx(nsubc_usr));     % inv(kron(A, B)) = kron(inv(A), inv(B))
-        ch_eff_mmse_dd = sfft_mtx*ch_eff_mmse_tf*isfft_mtx;
-        ch_inv_dd = reshape(sum(ch_eff_mmse_dd, 2), num.num_delay_usr, num.num_doppler_usr);
-        noise_var_mat_dd = noise_var*(abs(ch_inv_dd).^2);
+%         % calculate noise variance
+%         ch_eff_mmse_dd = sfft_mtx*ch_eff_mmse_tf*isfft_mtx;
+%         ch_inv_dd = reshape(sum(ch_eff_mmse_dd, 2), num.num_delay_usr, num.num_doppler_usr);
+%         noise_var_mat_dd = noise_var*(abs(ch_inv_dd).^2);
     else
         % check time-frequency channel
         if isempty(ch_est_rbs_tf)
@@ -81,13 +83,30 @@ elseif strcmp(cheq_option, 'tfeq_mmse')
         % equalize channel (one-tap mmse)
         rx_sym_rbs_eq_tf = rx_sym_rbs_tf.*ch_est_rbs_mmse_tf;
         
-        % calculate noise variance
-        ch_est_rbs_mmse_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(ch_est_rbs_mmse_tf, [], 1), [], 2);
-        ch_inv_dd = reshape(sum(gen_eff_ch(ch_est_rbs_mmse_dd), 2), num.num_delay_usr, num.num_doppler_usr);
-        noise_var_mat_dd = noise_var*(abs(ch_inv_dd).^2);
+%         % calculate noise variance
+%         ch_est_rbs_mmse_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(ch_est_rbs_mmse_tf, [], 1), [], 2);
+%         ch_inv_dd = reshape(sum(gen_eff_ch(ch_est_rbs_mmse_dd), 2), num.num_delay_usr, num.num_doppler_usr);
+%         noise_var_mat_dd = noise_var*(abs(ch_inv_dd).^2);
     end
 else
     error('cheq_option value must be one of these: {tfeq_zf, tfeq_mmse}')
 end
+
+% generate effective channel
+if strcmp(chest_option, 'real') && test_option.fulltap_eq
+    % get real effective channel
+    ch_eff_dd = ch_real_eff_dd;
+else
+    if isempty(ch_est_rbs_dd)
+        % 2d inverse sfft for channel transformation
+        ch_est_rbs_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(ch_est_rbs_tf, [], 1), [], 2);
+    end
+    
+    % generate block circular channel matrix
+    ch_eff_dd = gen_eff_ch(ch_est_rbs_dd);
+end
+
+% calculate noise variance (common for both)
+noise_var_mat_dd = noise_var*abs(sum(ch_eff_dd, 2)).^2;
 
 end

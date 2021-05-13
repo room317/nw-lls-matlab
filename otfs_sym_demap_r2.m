@@ -58,7 +58,7 @@
 function [rx_sym_data_usrfrm, rx_sym_pilot_usrfrm] = otfs_sym_demap_r2(rx_sym_rbs_dd, num, test_option)
 
 % set power for normalization
-if test_option.otfs_pilot_impulse_pwr_reduction && (test_option.otfs_map_plan == 1 || test_option.otfs_map_plan == 2 || test_option.otfs_map_plan == 3)   % use impulse pilot
+if test_option.otfs_pilot_pwr_set && (test_option.otfs_map_plan == 1 || test_option.otfs_map_plan == 2 || test_option.otfs_map_plan == 3)   % use impulse pilot
     
     % set power for papr reduction
     % 2d-impulse pilot with reduced power

@@ -14,7 +14,7 @@ for i = 1:size(ch,2)
 end
 idx = reshape(toeplitz(1:size(ch,2),circshift(fliplr(1:size(ch,2)),1)),[],1);
 ch1 = reshape(permute(ch0(:,:,idx),[1 3 2]),num_el*size(ch,2),size(ch,1));
-ch2 = reshape(permute(reshape(ch1,numel(ch),size(ch,2),size(ch,1)),[1 3 2]),num_el,num_el);
+ch2 = reshape(permute(reshape(ch1,num_el,size(ch,2),size(ch,1)),[1 3 2]),num_el,num_el);
 ch_eff = ch2/sqrt(num_el);
 
 end
