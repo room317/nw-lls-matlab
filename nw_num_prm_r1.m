@@ -1,6 +1,6 @@
 % nw_num generates numerical parameters(numerologies) and constants
 
-function nw_num = nw_num_prm_r1(scs_khz, bw_mhz, num_slot, waveform, chest_option, usr_option, sim_option)
+function nw_num = nw_num_prm_r1(carrier_freq_mhz, scs_khz, bw_mhz, num_slot, waveform, chest_option, usr_option, sim_option)
 
 % timing parameter reference
 % 1 frame = 10 ms
@@ -13,33 +13,64 @@ function nw_num = nw_num_prm_r1(scs_khz, bw_mhz, num_slot, waveform, chest_optio
 % rb (lte): resource block, 12 consecutive subcarriers in 1 slot
 % rb (nr): resource block, 12 consecutive subcarriers
 
+% set operating band (fr1, fr2)
+fr2 = carrier_freq_mhz > 5925;
+
 % set subcarrier spacing parameters
-scs_khz_list = [15 30 60];
-idx_scs = find(scs_khz_list == scs_khz, 1);
-if isempty(idx_scs) && ~sim_option.override
-    error('Subcarrier spacing must be one of these: {15, 30, 60}')
+if fr2
+    scs_khz_list = [60 120];
+    idx_scs = find(scs_khz_list == scs_khz, 1);
+    if isempty(idx_scs) && ~sim_option.override
+        error('Subcarrier spacing for FR2 must be one of these: {60, 120}')
+    end
+else
+    scs_khz_list = [15 30 60];
+    idx_scs = find(scs_khz_list == scs_khz, 1);
+    if isempty(idx_scs) && ~sim_option.override
+        error('Subcarrier spacing for FR1 must be one of these: {15, 30, 60}')
+    end
 end
 
 % set bandwidth parameters
-bw_mhz_list = [5 10 15 20 25 30 40 50 60 80 90 100];
-idx_bw = find(bw_mhz_list == bw_mhz, 1);
-if isempty(idx_bw) && ~sim_option.override
-    error('Bandwidth must be one of these: {5, 10, 15, 20, 25, 30, 40, 50, 60, 80, 90, 100}')
+if fr2
+    bw_mhz_list = [50 100 200 400];
+    idx_bw = find(bw_mhz_list == bw_mhz, 1);
+    if isempty(idx_bw) && ~sim_option.override
+        error('Bandwidth for FR2 must be one of these: {50, 100, 200, 400}')
+    end
+else
+    bw_mhz_list = [5 10 15 20 25 30 40 50 60 80 90 100];
+    idx_bw = find(bw_mhz_list == bw_mhz, 1);
+    if isempty(idx_bw) && ~sim_option.override
+        error('Bandwidth for FR1 must be one of these: {5, 10, 15, 20, 25, 30, 40, 50, 60, 80, 90, 100}')
+    end
 end
 
 % set resource block table
 % first column is for custom setting
 % ref.: http://howltestuffworks.blogspot.com/2019/11/5g-nr-resource-blocks.html
 % ref.: https://www.sharetechnote.com/html/5G/5G_FR_Bandwidth.html
-%     bw (mhz)     |   5 |  10 |  15 |  20 |  25 |  30 |  40 |  50 |  60 |  80 |  90 | 100
-%     -------------+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+----
-%     scs 15 (khz) |  25 |  52 |  79 | 106 | 133 | 160 | 216 | 270 |   0 |   0 |   0 |   0
-%     scs 30 (khz) |  11 |  24 |  38 |  51 |  65 |  78 | 106 | 133 | 162 | 217 | 245 | 273
-%     scs 60 (khz) |   0 |  11 |  18 |  24 |  31 |  38 |  51 |  65 |  79 | 107 | 121 | 135
-rb_tbl = [ ...
-    25   52   79  106  133  160  216  270    0    0    0    0
-    11   24   38   51   65   78  106  133  162  217  245  273
-     0   11   18   24   31   38   51   65   79  107  121  135];
+%   1. fr1
+%     bw      (mhz) |   5 |  10 |  15 |  20 |  25 |  30 |  40 |  50 |  60 |  80 |  90 | 100
+%     --------------+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+----
+%     scs  15 (khz) |  25 |  52 |  79 | 106 | 133 | 160 | 216 | 270 |   - |   - |   - |   -
+%     scs  30 (khz) |  11 |  24 |  38 |  51 |  65 |  78 | 106 | 133 | 162 | 217 | 245 | 273
+%     scs  60 (khz) |   - |  11 |  18 |  24 |  31 |  38 |  51 |  65 |  79 | 107 | 121 | 135
+%   2. fr2
+%     bw      (mhz) |  50 | 100 | 200 | 400
+%     --------------+-----+-----+-----+----
+%     scs  60 (khz) |  66 | 132 | 264 |   -
+%     scs 120 (khz) |  32 |  66 | 132 | 264
+if fr2
+    rb_tbl = [ ...
+        66  132  264    0
+        32   66  132  264];
+else
+    rb_tbl = [ ...
+        25   52   79  106  133  160  216  270    0    0    0    0
+        11   24   38   51   65   78  106  133  162  217  245  273
+         0   11   18   24   31   38   51   65   79  107  121  135];
+end
 
 % set primary numerical parameters
 if sim_option.override

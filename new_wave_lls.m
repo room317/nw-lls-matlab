@@ -54,7 +54,7 @@ while 1
     usr_option = nw_parse_prm.usr;
     
     % set test simulation option
-    sim_option.override = true;     % override simulation options when true
+    sim_option.override = false;    % override simulation options when true
     sim_option.num_rb = 11;         % number of total rbs
     sim_option.scs_khz = 60;        % subcarrier spacing (khz)
     sim_option.num_slot = 4;        % number of total slots
@@ -62,7 +62,7 @@ while 1
     sim_option.coderate = 666;      % number of information bits per 1024 bits
     
     % set equalization option
-    nw_num = nw_num_prm_r1(scs_khz, bw_mhz, num_slot, waveform, chest_option, usr_option, sim_option);
+    nw_num = nw_num_prm_r1(carrier_freq_mhz, scs_khz, bw_mhz, num_slot, waveform, chest_option, usr_option, sim_option);
     nw_cc = nw_cc_prm(len_tb_bit);
     nw_rm = nw_rm_prm(len_tb_bit, mcs, nw_num, nw_cc, sim_option);
     nw_sim = nw_sim_prm(len_tb_bit, num_sim, nw_num, nw_cc, nw_rm);
@@ -219,6 +219,9 @@ while 1
             % sum channel mse
             if test_option.ch_mse
                 sum_ch_mse = sum_ch_mse+ch_mse;
+            end
+            
+            if test_option.ch_mse && strcmp(waveform, 'otfs')
                 sum_ch_pwr = sum_ch_pwr+sum(abs(ch_est_rbs_dd).^2, [3 4]);
             end
             
@@ -282,7 +285,7 @@ while 1
         grid minor
     end
     
-    if test_option.ch_mse
+    if test_option.ch_mse && strcmp(waveform, 'otfs')
         for idx_usr = 1:nw_num.num_usr
             figure
             mesh(1:nw_num.num_doppler_usr, 1:nw_num.num_delay_usr, sqrt(fftshift(fftshift(sum_ch_pwr, 1), 2)/(sim_cnt*(sum(nw_rm.num_usrfrm_cb)+nw_num.num_usr))))
