@@ -288,7 +288,7 @@ while 1
     if test_option.ch_mse && strcmp(waveform, 'otfs')
         for idx_usr = 1:nw_num.num_usr
             figure
-            mesh(1:nw_num.num_doppler_usr, 1:nw_num.num_delay_usr, sqrt(fftshift(fftshift(sum_ch_pwr, 1), 2)/(sim_cnt*(sum(nw_rm.num_usrfrm_cb)+nw_num.num_usr))))
+            mesh(1:nw_num.num_doppler_usr, 1:nw_num.num_delay_usr, sqrt(fftshift(fftshift(sum_ch_pwr/(sim_cnt*sum(nw_rm.num_usrfrm_cb)*nw_num.num_usr), 1), 2)))
             xlabel('Doppler'), ylabel('Delay'), zlabel('Average Channel Amplitude'), title('Channel Estimation')
         end
     end

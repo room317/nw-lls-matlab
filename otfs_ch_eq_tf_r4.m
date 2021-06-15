@@ -15,10 +15,6 @@
 
 function [rx_sym_rbs_eq_tf, noise_var_mat_dd] = otfs_ch_eq_tf_r4(rx_sym_rbs_tf, ch_est_rbs_tf, ch_est_rbs_dd, ch_real_eff_tf, ch_real_eff_dd, num, noise_var, chest_option, cheq_option, test_option)
 
-% variables
-sfft_mtx = num.sfft_mtx;
-isfft_mtx = num.isfft_mtx;
-
 % equalize channel
 if strcmp(cheq_option, 'tfeq_zf')
     if strcmp(chest_option, 'real') && test_option.fulltap_eq

@@ -55,4 +55,12 @@ else
     ch_onetap_usr_tf = [];
 end
 
+% % dump
+% assignin('base', 'ch_fulltap_tf', ch_fulltap_tf);
+% assignin('base', 'ch_mat_usr_tf', ch_mat_usr_tf);
+% assignin('base', 'ch_eff_usr_tf', ch_eff_usr_tf);
+% assignin('base', 'ch_eff_usr_dd', ch_eff_usr_dd);
+% assignin('base', 'ch_onetap_usr_tf', ch_onetap_usr_tf);
+% pause
+
 end

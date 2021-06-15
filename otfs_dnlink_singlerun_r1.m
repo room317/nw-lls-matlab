@@ -248,6 +248,15 @@ for idx_usr = 1:num.num_usr
                 ch_est_rbs_usr_dd = [];
             end
             
+%             assignin('base', 'ch_real_eff_usr_tf', ch_real_eff_usr_tf)
+%             assignin('base', 'ch_real_eff_usr_dd', ch_real_eff_usr_dd)
+%             assignin('base', 'ch_est_rbs_usr_tf', ch_est_rbs_usr_tf)
+%             assignin('base', 'rx_sym_rbs_usr_tf', rx_sym_rbs_usr_tf)
+%             assignin('base', 'noise_var', noise_var)
+%             assignin('base', 'tx_sym_rbs_tf', tx_sym_rbs_tf)
+%             assignin('base', 'tx_sym_rbs_dd', tx_sym_rbs_dd)
+%             pause
+            
             % equalize channel
             if strcmp(cheq_option, 'ddeq_zf') || strcmp(cheq_option, 'ddeq_mmse')
                 % check delay-doppler rx signals

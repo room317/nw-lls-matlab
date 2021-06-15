@@ -112,12 +112,14 @@ else
 end
 
 % % dump
+% assignin('base', 'ch_mat_t', ch_mat_t);
+% assignin('base', 'ch_mat_fftshift_tf', ch_mat_fftshift_tf);
+% assignin('base', 'ch_mat_tf', ch_mat_tf);
 % assignin('base', 'ch_fulltap_tf', ch_fulltap_tf);
-% assignin('base', 'ch_onetap_tf', ch_onetap_tf);
-% assignin('base', 'idft_column', idft_column);
-% assignin('base', 'dft_row', dft_row);
-% assignin('base', 'ch_eff_tf', ch_eff_tf);
-% assignin('base', 'ch_eff_dd', ch_eff_dd);
+% if demap_usr
+%     assignin('base', 'ch_mat_usr_tf', ch_mat_usr_tf);
+%     assignin('base', 'ch_onetap_usr_tf', ch_onetap_usr_tf);
+% end
 % pause
 
 end
