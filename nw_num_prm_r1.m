@@ -50,13 +50,13 @@ end
 % first column is for custom setting
 % ref.: http://howltestuffworks.blogspot.com/2019/11/5g-nr-resource-blocks.html
 % ref.: https://www.sharetechnote.com/html/5G/5G_FR_Bandwidth.html
-%   1. fr1
+%   1) fr1
 %     bw      (mhz) |   5 |  10 |  15 |  20 |  25 |  30 |  40 |  50 |  60 |  80 |  90 | 100
 %     --------------+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+----
 %     scs  15 (khz) |  25 |  52 |  79 | 106 | 133 | 160 | 216 | 270 |   - |   - |   - |   -
 %     scs  30 (khz) |  11 |  24 |  38 |  51 |  65 |  78 | 106 | 133 | 162 | 217 | 245 | 273
 %     scs  60 (khz) |   - |  11 |  18 |  24 |  31 |  38 |  51 |  65 |  79 | 107 | 121 | 135
-%   2. fr2
+%   2) fr2
 %     bw      (mhz) |  50 | 100 | 200 | 400
 %     --------------+-----+-----+-----+----
 %     scs  60 (khz) |  66 | 132 | 264 |   -
@@ -165,10 +165,13 @@ else
     % set pilot resource ratio (otfs pilot setup)
     %   - num. otfs pilot(including guard) qam symbols = num. ofdm pilot qam symbols
     %     ex) 600*2 for ofdm (14.29%) and 86*14 for otfs (14.33%)
-    delay_pilot_ratio = 0.35;        % num_delay_pilot/num_delay_data (40% of available delay grids, even number)
-    doppler_pilot_ratio = 0.71;      % num_doppler_pilot/num_doppler_data (100% of available doppler grids)
-    delay_guard_a_ratio = 0.37;        % num_delay_guard/num_delay_pilot (20% of pilot delay grids)
-    delay_guard_b_ratio = 0.13;        % num_delay_guard/num_delay_pilot (20% of pilot delay grids)
+    %   - setting
+    %     10 mhz / 15 khz / 1 rbs : 0.05 / 1.0 / 0.3 / 0.1 / 0.0
+    %     10 mhz / 60 khz / 4 rbs : 0.25 / 0.5 / 0.3 / 0.1 / 0.25
+    delay_pilot_ratio = 0.25;        % num_delay_pilot/num_delay_data (40% of available delay grids, even number)
+    doppler_pilot_ratio = 0.5;      % num_doppler_pilot/num_doppler_data (100% of available doppler grids)
+    delay_guard_a_ratio = 0.3;        % num_delay_guard/num_delay_pilot (20% of pilot delay grids)
+    delay_guard_b_ratio = 0.1;        % num_delay_guard/num_delay_pilot (20% of pilot delay grids)
     doppler_guard_ratio = 0.25;      % num_doppler_guard/num_doppler_pilot (20% of pilot doppler grids)
     
     % user parameters for otfs

@@ -72,7 +72,7 @@ while 1
     test_option.fading_only = false;                % no awgn noise when true
     test_option.awgn = false;                        % no fading when true
     test_option.papr = false;                       % papr test
-    test_option.ch_mse = true;                     % channel mmse test
+    test_option.ch_mse = false;                     % channel mmse test
     test_option.sym_err_var = false;                % symbol error variance test
     test_option.ch_tf_edge_interp = false;          % tf-channel edge interpolation test (no use)
     test_option.ch_dd_guard_interp = false;         % guard interpolation for channel estimation

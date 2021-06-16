@@ -237,7 +237,7 @@ for idx_usr = 1:num.num_usr
                 rx_sym_rbs_usr_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(rx_sym_rbs_usr_tf, [], 1), [], 2);
                 
                 % estimate channel
-                ch_est_rbs_usr_dd = otfs_ch_est_dd_r2(rx_sym_rbs_usr_dd, ch_real_rbs_usr_tf, num, chest_option, test_option);
+                ch_est_rbs_usr_dd = otfs_ch_est_dd_r2(rx_sym_rbs_usr_dd, num, chest_option, test_option);
                 ch_est_rbs_usr_tf = [];
             else
                 % initialize rx in dd domain

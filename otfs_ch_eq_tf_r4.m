@@ -103,6 +103,6 @@ else
 end
 
 % calculate noise variance (common for both)
-noise_var_mat_dd = noise_var*abs(sum(ch_eff_dd, 2)).^2;
+noise_var_mat_dd = noise_var*reshape(abs(sum(ch_eff_dd, 2)).^2, num.num_subc_usr, []);
 
 end
