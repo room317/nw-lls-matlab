@@ -88,21 +88,23 @@ else
     error('cheq_option value must be one of these: {tfeq_zf, tfeq_mmse}')
 end
 
-% generate effective channel
+% calculate noise variance (common for both)
 if strcmp(chest_option, 'real') && test_option.fulltap_eq
-    % get real effective channel
-    ch_eff_dd = ch_real_eff_dd;
+%     noise_var_mat_dd = noise_var*reshape(abs(sum(ch_eff_dd, 2)).^2, num.num_subc_usr, []);
+    noise_var_mat_dd = noise_var*reshape(sum(abs(inv(ch_real_eff_dd), 2).^2, 2), num.num_subc_usr, []);
 else
-    if isempty(ch_est_rbs_dd)
-        % 2d inverse sfft for channel transformation
-        ch_est_rbs_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(ch_est_rbs_tf, [], 1), [], 2);
-    end
-    
-    % generate block circular channel matrix
-    ch_eff_dd = gen_eff_ch(ch_est_rbs_dd);
+    noise_var_mat_dd = noise_var*sum(abs(1./ch_est_rbs_tf).^2, 'all')/(num.num_doppler_usr*num.num_delay_usr);
 end
 
-% calculate noise variance (common for both)
-noise_var_mat_dd = noise_var*reshape(abs(sum(ch_eff_dd, 2)).^2, num.num_subc_usr, []);
+
+% assignin('base', 'rx_sym_rbs_tf', rx_sym_rbs_tf)
+% assignin('base', 'ch_real_eff_dd', ch_real_eff_dd)
+% assignin('base', 'ch_real_eff_tf', ch_real_eff_tf)
+% assignin('base', 'ch_est_rbs_dd', ch_est_rbs_dd)
+% assignin('base', 'ch_est_rbs_tf', ch_est_rbs_tf)
+% assignin('base', 'ch_eff_dd', ch_eff_dd)
+% assignin('base', 'noise_var', noise_var)
+% assignin('base', 'noise_var_mat_dd', noise_var_mat_dd)
+% pause
 
 end

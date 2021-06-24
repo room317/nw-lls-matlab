@@ -69,7 +69,7 @@
 %        (1)data       :  d d d d d d d d d d d d d d d d
 %        (0)data       :  d d d d d d d d d d d d d d d d
 
-function ch_est_rbs_dd = otfs_ch_est_dd_r2(rx_sym_rbs_dd, num, chest_option, test_option)
+function ch_est_rbs_dd = otfs_ch_est_dd_r2(rx_sym_rbs_dd, ch_real_rbs_usr_tf, num, chest_option, test_option)
 
 % demap pilot symbols
 [~, rx_sym_pilot1_usrfrm, rx_sym_pilot2_usrfrm] = otfs_sym_demap_r3(rx_sym_rbs_dd, num, chest_option, test_option);
@@ -327,5 +327,6 @@ end
 % if test_option.ch_mse
 %     assignin('base', 'ch_real_rbs_usr_dd', ch_real_rbs_usr_dd)
 % end
+% pause
 
 end

@@ -166,13 +166,15 @@ else
     %   - num. otfs pilot(including guard) qam symbols = num. ofdm pilot qam symbols
     %     ex) 600*2 for ofdm (14.29%) and 86*14 for otfs (14.33%)
     %   - setting
-    %     10 mhz / 15 khz / 1 rbs : 0.05 / 1.0 / 0.3 / 0.1 / 0.0
-    %     10 mhz / 60 khz / 4 rbs : 0.25 / 0.5 / 0.3 / 0.1 / 0.25
-    delay_pilot_ratio = 0.25;        % num_delay_pilot/num_delay_data (40% of available delay grids, even number)
-    doppler_pilot_ratio = 0.5;      % num_doppler_pilot/num_doppler_data (100% of available doppler grids)
-    delay_guard_a_ratio = 0.3;        % num_delay_guard/num_delay_pilot (20% of pilot delay grids)
-    delay_guard_b_ratio = 0.1;        % num_delay_guard/num_delay_pilot (20% of pilot delay grids)
-    doppler_guard_ratio = 0.25;      % num_doppler_guard/num_doppler_pilot (20% of pilot doppler grids)
+    %     10 mhz / 15 khz / 1 slot : 0.05 / 1.0 / 0.3 / 0.1 / 0.0
+    %     10 mhz / 60 khz / 4 slots : 0.25 / 0.5 / 0.3 / 0.1 / 0.25
+    %     50 mhz / 60 khz / 1 slot : 0.24 / 1.0 / 0.44 / 0.06 / 0.0
+    %     50 mhz / 120 khz / 2 slots : 0.5 / 0.8 / 0.44 / 0.06 / 0.23
+    delay_pilot_ratio = 0.24;        % num_delay_pilot/num_delay_data (40% of available delay grids, even number)
+    doppler_pilot_ratio = 1.0;      % num_doppler_pilot/num_doppler_data (100% of available doppler grids)
+    delay_guard_a_ratio = 0.44;        % num_delay_guard/num_delay_pilot (20% of pilot delay grids)
+    delay_guard_b_ratio = 0.06;        % num_delay_guard/num_delay_pilot (20% of pilot delay grids)
+    doppler_guard_ratio = 0.0;      % num_doppler_guard/num_doppler_pilot (20% of pilot doppler grids)
     
     % user parameters for otfs
     num_doppler_usr = num_ofdmsym_usr;              % corresponds to ofdm symbols (fixed)

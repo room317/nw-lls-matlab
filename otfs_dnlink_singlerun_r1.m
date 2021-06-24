@@ -41,10 +41,12 @@ tx_sym_bw = zeros(num.num_subc_bw, num.num_ofdmsym, sum(rm.num_usrfrm_cb));
 
 % generate and map per-user qam symbols
 for idx_usr = 1:num.num_usr
-    % generate transmit symbols per user
-    [tx_bit_usr, tx_sym_usr] = gen_tx_qamsym_usr_r1(sim, cc, rm, num, tx_crc, turbo_enc);
-    tx_bit(:, idx_usr) = tx_bit_usr;
-    tx_sym(:, :, idx_usr) = tx_sym_usr;
+    if ~test_option.pilot_only
+        % generate transmit symbols per user
+        [tx_bit_usr, tx_sym_usr] = gen_tx_qamsym_usr_r1(sim, cc, rm, num, tx_crc, turbo_enc);
+        tx_bit(:, idx_usr) = tx_bit_usr;
+        tx_sym(:, :, idx_usr) = tx_sym_usr;
+    end
     
     % calculate user index
     usr_id = num.list_usr(idx_usr);                                         % user id
@@ -56,7 +58,11 @@ for idx_usr = 1:num.num_usr
     % map user symbols
     for idx_usrfrm = 1:sum(rm.num_usrfrm_cb)
         % extract user frame data per user
-        tx_sym_data_usrfrm = squeeze(tx_sym_usr(:, idx_usrfrm));
+        if test_option.pilot_only
+            tx_sym_data_usrfrm = zeros(num.num_qamsym_usr, 1);
+        else
+            tx_sym_data_usrfrm = squeeze(tx_sym_usr(:, idx_usrfrm));
+        end
         
         % map qam symbols to user physical resource blocks
         if strncmp(chest_option, 'dd_', 3)
@@ -237,7 +243,7 @@ for idx_usr = 1:num.num_usr
                 rx_sym_rbs_usr_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(rx_sym_rbs_usr_tf, [], 1), [], 2);
                 
                 % estimate channel
-                ch_est_rbs_usr_dd = otfs_ch_est_dd_r2(rx_sym_rbs_usr_dd, num, chest_option, test_option);
+                ch_est_rbs_usr_dd = otfs_ch_est_dd_r2(rx_sym_rbs_usr_dd, ch_real_rbs_usr_tf, num, chest_option, test_option);
                 ch_est_rbs_usr_tf = [];
             else
                 % initialize rx in dd domain
@@ -303,16 +309,26 @@ for idx_usr = 1:num.num_usr
         end
         
         % buffer qam symbols
-        rx_sym(:, idx_usrfrm, idx_usr) = rx_sym_data_usrfrm;
+        if ~test_option.pilot_only
+            rx_sym(:, idx_usrfrm, idx_usr) = rx_sym_data_usrfrm;
+        end
         
         % calculate error variance
         if test_option.awgn
             noise_var_usrfrm = noise_var;
-        elseif strncmp(chest_option, 'dd_', 3)
+        elseif strncmp(chest_option, 'dd_', 3) && strcmp(chest_option, 'real') && test_option.fulltap_eq
             [noise_var_usrfrm, ~] = otfs_sym_demap_r3(noise_var_mat_dd, num, chest_option, test_option);
         else
             noise_var_usrfrm = noise_var_mat_dd(:);
         end
+        
+%         % tmp
+%         noise_var_usrfrm_tmp = abs(tx_sym(:, :, idx_usr)-rx_sym(:, :, idx_usr)).^2;
+%         fprintf('noise_var:%10.6f     cal:%10.6f     genie: %10.6f\n', noise_var, noise_var_usrfrm, mean(noise_var_usrfrm_tmp))
+%         assignin('base', 'noise_var_usrfrm', noise_var_usrfrm)
+%         assignin('base', 'noise_var_usrfrm_tmp', noise_var_usrfrm_tmp)
+%         pause
+        
 %         error_var_usr = noise_var./(abs(ch_est_rbs_usr).^2);
 %         [error_var_usrfrm, ~] = ofdm_sym_demap(error_var_usr, num);
 %         error_var(:, idx_usrfrm, idx_usr) = error_var_usrfrm;
@@ -322,14 +338,20 @@ for idx_usr = 1:num.num_usr
         error_var(:, idx_usrfrm, idx_usr) = noise_var_usrfrm;
     end
     
-    % generate received bits per user
-    [rx_bit_usr, rx_crc_error_usr] = gen_rx_bit_usr_r1(rx_sym(:, :, idx_usr), error_var(:, :, idx_usr), rx_crc, turbo_dec, sim, cc, rm);
-    rx_bit(:, idx_usr) = rx_bit_usr;
-    rx_crc_error(:, idx_usr) = rx_crc_error_usr;
+    if ~test_option.pilot_only
+        % generate received bits per user
+        [rx_bit_usr, rx_crc_error_usr] = gen_rx_bit_usr_r1(rx_sym(:, :, idx_usr), error_var(:, :, idx_usr), rx_crc, turbo_dec, sim, cc, rm);
+        rx_bit(:, idx_usr) = rx_bit_usr;
+        rx_crc_error(:, idx_usr) = rx_crc_error_usr;
+    end
 end
 
 % calculate packet error
-pkt_error = rx_crc_error | (symerr(tx_bit, rx_bit, 'column-wise') > 0);
+if test_option.pilot_only
+    pkt_error = false;
+else
+    pkt_error = rx_crc_error | (symerr(tx_bit, rx_bit, 'column-wise') > 0);
+end
 
 % calculate papr
 if test_option.papr
@@ -408,7 +430,7 @@ else
 end
 
 % test: channel estimation error variance
-if test_option.sym_err_var
+if test_option.sym_err_var && ~test_option.pilot_only
 %     sym_err_var = var(reshape(tx_sym-rx_sym, [], 1, num.num_usr), 0, 1);
     sym_err_var = var(reshape(tx_sym-rx_sym, [], 1, num.num_usr), 1, 1);
     

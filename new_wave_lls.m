@@ -53,6 +53,11 @@ while 1
     waveform = nw_parse_prm.wave;
     usr_option = nw_parse_prm.usr;
     
+    % check parameters
+    if ~(len_tb_bit > 0)
+        error('Check TB length should be greater than 0.')
+    end
+    
     % set test simulation option
     sim_option.override = false;    % override simulation options when true
     sim_option.num_rb = 11;         % number of total rbs
@@ -61,13 +66,6 @@ while 1
     sim_option.Qm = 4;              % number of bits per qam symbol
     sim_option.coderate = 666;      % number of information bits per 1024 bits
     
-    % set equalization option
-    nw_num = nw_num_prm_r1(carrier_freq_mhz, scs_khz, bw_mhz, num_slot, waveform, chest_option, usr_option, sim_option);
-    nw_cc = nw_cc_prm(len_tb_bit);
-    nw_rm = nw_rm_prm(len_tb_bit, mcs, nw_num, nw_cc, sim_option);
-    nw_sim = nw_sim_prm(len_tb_bit, num_sim, nw_num, nw_cc, nw_rm);
-    nw_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, delay_spread_rms_us);
-        
     % set test option
     test_option.fading_only = false;                % no awgn noise when true
     test_option.awgn = false;                        % no fading when true
@@ -77,8 +75,6 @@ while 1
     test_option.ch_tf_edge_interp = false;          % tf-channel edge interpolation test (no use)
     test_option.ch_dd_guard_interp = false;         % guard interpolation for channel estimation
     test_option.ch_est_xcorr_prune = false;          % channel estimation pilot resource pruning after sequence pilot xcorr
-    test_option.part_rx = nw_num.num_ofdmsym;       % partial reception test for latency enhancement (number of symbols received)
-%     test_option.otfs_pilot_plan = 'impulse';        % pilot resource mapping test (refer to 'otfs_sym_map_r3.m')
     test_option.otfs_pilot_pwr_set = false;         % valid only when otfs_pilot_plan is 'impulse'
     test_option.zc_seq_len = 37;                                    % zadoff-chu sequence length (37)
     test_option.zc_seq = zadoffChuSeq(1,test_option.zc_seq_len);    % zadoff-chu sequence
@@ -89,12 +85,23 @@ while 1
     test_option.fulltap_eq = false;          % use full-tap real channel for equalization
     test_option.common_usr_ch = true;          % use common channel per user
     test_option.gpu_flag = false;           % use gpu for real channel generation
+    test_option.pilot_only = false;         % use null data
 %     test_option.otfs_pilot_spread_seq = exp(-1i*pi*25*(0:36).*(1:37)/37);
     
     % check test option
-    if test_option.otfs_pilot_pwr_set && ~strcmp(test_option.otfs_pilot_plan, 'impulse')
-        error('To use ''otfs_pilot_pwr_set'', ''otfs_pilot_plan'' must be ''impulse''.')
+    if test_option.otfs_pilot_pwr_set && ~strcmp(chest_option, 'dd_impulse')
+        error('To use ''otfs_pilot_pwr_set'', ''chest_option'' must be ''dd_impulse''.')
     end
+    
+    % set equalization option
+    nw_num = nw_num_prm_r1(carrier_freq_mhz, scs_khz, bw_mhz, num_slot, waveform, chest_option, usr_option, sim_option);
+    nw_cc = nw_cc_prm(len_tb_bit);
+    nw_rm = nw_rm_prm(len_tb_bit, mcs, nw_num, nw_cc, sim_option, test_option);
+    nw_sim = nw_sim_prm(len_tb_bit, num_sim, nw_num, nw_cc, nw_rm);
+    nw_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, delay_spread_rms_us);
+    
+    % set additional test option
+    test_option.part_rx = nw_num.num_ofdmsym;       % partial reception test for latency enhancement (number of symbols received)
     
 %     % generate walsh-hadamard sequence
 %     walsh_seq = 1;

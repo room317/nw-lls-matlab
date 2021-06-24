@@ -1,6 +1,6 @@
 % ref: 3gpp ts 36.212 (36212-e40)
 
-function nw_rm = nw_rm_prm(len_tb_bit, mcs, num, cc, sim_option)
+function nw_rm = nw_rm_prm(len_tb_bit, mcs, num, cc, sim_option, test_option)
 
 % mcs table (Qm, code_rate_x1024)
 mcs_tbl = [ ...
@@ -41,7 +41,11 @@ E = NL*Qm*[floor(G_/cc.C)*ones(cc.C-gamma, 1); ceil(G_/cc.C)*ones(gamma, 1)];   
 
 % simulation setup
 num_data_sym_cb = E/Qm;                                     % number of symbol per code block (vector)
-num_usrfrm_cb = ceil(num_data_sym_cb/num.num_qamsym_usr);   % number of required user frames (previously num_slot, number of slots, vector)
+if test_option.pilot_only
+    num_usrfrm_cb = 1;
+else
+    num_usrfrm_cb = ceil(num_data_sym_cb/num.num_qamsym_usr);   % number of required user frames (previously num_slot, number of slots, vector)
+end
 t_tb = sum(num_usrfrm_cb)*num.t_usrfrm;                     % transfer block length (sec)
 E_true = num.num_qamsym_usr*num_usrfrm_cb*Qm;
 
