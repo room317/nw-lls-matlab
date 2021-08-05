@@ -235,9 +235,27 @@ for idx_usr = 1:num.num_usr
                 % initialize rx in dd domain
                 rx_sym_rbs_usr_dd = [];
                 
-                % estimate channel
-                ch_est_rbs_usr_tf = ch_real_rbs_usr_tf;
-                ch_est_rbs_usr_dd = [];
+                % test ideal channel clipping
+                if strcmp(test_option.ch_clip, 'random')
+                    % get 2d ideal convolutional channels (delay x doppler x symbols)
+                    ch_real_rbs_usr_mat_dd = gen_conv_ch(ch_real_eff_usr_dd, num.num_delay_usr);
+                    ch_real_rbs_usr_dd = squeeze(ch_real_rbs_usr_mat_dd(:, :, 10));
+                    
+                    % clip channel
+                    ch_est_rbs_usr_dd = gen_ch_clip(ch_real_rbs_usr_dd, num);
+                    ch_est_rbs_usr_tf = sqrt(num.num_doppler_usr/num.num_delay_usr)*fft(ifft(ch_est_rbs_usr_dd, [], 2), [], 1);
+                elseif strcmp(test_option.ch_clip, 'center')
+                    % get ideal convolutional channel
+                    ch_real_rbs_usr_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(ch_real_rbs_usr_tf, [], 1), [], 2);
+                    
+                    % clip channel
+                    ch_est_rbs_usr_dd = gen_ch_clip(ch_real_rbs_usr_dd, num);
+                    ch_est_rbs_usr_tf = sqrt(num.num_doppler_usr/num.num_delay_usr)*fft(ifft(ch_est_rbs_usr_dd, [], 2), [], 1);
+                else
+                    % estimate channel
+                    ch_est_rbs_usr_tf = ch_real_rbs_usr_tf;
+                    ch_est_rbs_usr_dd = [];
+                end
             elseif strncmp(chest_option, 'dd_', 3)
                 % 2d inverse sfft for channel estimation only
                 rx_sym_rbs_usr_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(rx_sym_rbs_usr_tf, [], 1), [], 2);
@@ -253,15 +271,6 @@ for idx_usr = 1:num.num_usr
                 ch_est_rbs_usr_tf = otfs_ch_est_tf_r2(squeeze(tx_sym_rbs_tf(:, :, idx_usrfrm, idx_usr)), squeeze(tx_ofdmsym_faded(:, idx_usrfrm, idx_usr)), list_subc_usr, list_ofdmsym_usr, num, chest_option);
                 ch_est_rbs_usr_dd = [];
             end
-            
-%             assignin('base', 'ch_real_eff_usr_tf', ch_real_eff_usr_tf)
-%             assignin('base', 'ch_real_eff_usr_dd', ch_real_eff_usr_dd)
-%             assignin('base', 'ch_est_rbs_usr_tf', ch_est_rbs_usr_tf)
-%             assignin('base', 'rx_sym_rbs_usr_tf', rx_sym_rbs_usr_tf)
-%             assignin('base', 'noise_var', noise_var)
-%             assignin('base', 'tx_sym_rbs_tf', tx_sym_rbs_tf)
-%             assignin('base', 'tx_sym_rbs_dd', tx_sym_rbs_dd)
-%             pause
             
             % equalize channel
             if strcmp(cheq_option, 'ddeq_zf') || strcmp(cheq_option, 'ddeq_mmse')

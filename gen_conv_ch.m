@@ -1,4 +1,4 @@
-% gen_eff_ch generates doubly-convolutional matrix from block circulant matrix
+% gen_conv_ch generates doubly-convolutional matrix from block circulant matrix
 %     ch = gen_conv_ch(ch_eff)
 %     ch: (M x N) channel matrix
 %     ch_eff: (MN x MN) channel matrix
