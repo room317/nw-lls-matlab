@@ -86,7 +86,7 @@ while 1
     test_option.common_usr_ch = true;          % use common channel per user
     test_option.gpu_flag = false;           % use gpu for real channel generation
     test_option.pilot_only = false;         % use null data
-    test_option.ch_clip = 'center';     % clipping real channel ('none': no clipping, 'center': channel for symbol at center, 'random': channel for random symbol)
+    test_option.ch_clip = 'none';     % clipping real channel ('none': no clipping, 'center': channel for symbol at center, 'random': channel for random symbol)
 %     test_option.otfs_pilot_spread_seq = exp(-1i*pi*25*(0:36).*(1:37)/37);
     
     % check test option

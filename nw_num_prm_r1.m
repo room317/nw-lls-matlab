@@ -18,7 +18,7 @@ fr2 = carrier_freq_mhz > 5925;
 
 % set subcarrier spacing parameters
 if fr2
-    scs_khz_list = [60 120];
+    scs_khz_list = [60 120 240 480 960];
     idx_scs = find(scs_khz_list == scs_khz, 1);
     if isempty(idx_scs) && ~sim_option.override
         error('Subcarrier spacing for FR2 must be one of these: {60, 120}')
@@ -61,10 +61,16 @@ end
 %     --------------+-----+-----+-----+----
 %     scs  60 (khz) |  66 | 132 | 264 |   -
 %     scs 120 (khz) |  32 |  66 | 132 | 264
+%    *scs 240 (khz) |  16 |  32 |  66 | 132
+%    *scs 480 (khz) |   8 |  16 |  32 |  66
+%    *scs 960 (khz) |   4 |   8 |  16 |  32
 if fr2
     rb_tbl = [ ...
         66  132  264    0
-        32   66  132  264];
+        32   66  132  264
+        16   32   66  132
+         8   16   32   66
+         4    8   16   32];
 else
     rb_tbl = [ ...
         25   52   79  106  133  160  216  270    0    0    0    0

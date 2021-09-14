@@ -149,6 +149,9 @@ if ~test_option.awgn && test_option.ch_mse
         ch_real_eff_tf = zeros(num.num_subc_usr*num.num_ofdmsym_usr, num.num_subc_usr*num.num_ofdmsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
     end
     ch_est_rbs = zeros(num.num_subc_usr, num.num_ofdmsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
+else
+    ch_real_eff_tf = [];
+    ch_est_rbs = [];
 end
 
 % demodulate rx symbols per user and per user frame

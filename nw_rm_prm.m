@@ -3,17 +3,24 @@
 function nw_rm = nw_rm_prm(len_tb_bit, mcs, num, cc, sim_option, test_option)
 
 % mcs table (Qm, code_rate_x1024)
+%     mcs 16 (for test): 16QAM code rate 2/3
+%     mcs 17 (for test): 16QAM code rate 3/4
 mcs_tbl = [ ...
     2  78; 2 120; 2 193; 2 308; 2 449; 2 602; 4 378; 4 490; ...
-    4 616; 6 466; 6 567; 6 666; 6 772; 6 873; 6 948];
+    4 616; 6 466; 6 567; 6 666; 6 772; 6 873; 6 948;
+    4 666; 4 772];
 
 % primary parameters
 if sim_option.override
     Qm = sim_option.Qm;
     coderate = sim_option.coderate/1024;
 else
-    Qm = mcs_tbl(mcs, 1);                   % bits per symbol
-    coderate = mcs_tbl(mcs, 2)/1024;        % code rate
+    if mcs > size(mcs_tbl, 1)
+        error('MCS setting example: MCS1 ~ MCS15')
+    else
+        Qm = mcs_tbl(mcs, 1);                   % bits per symbol
+        coderate = mcs_tbl(mcs, 2)/1024;        % code rate
+    end
 end
 
 % fixed parameters
