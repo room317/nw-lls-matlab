@@ -114,10 +114,11 @@ if strcmp(chest_option, 'dd_impulse')       % use impulse pilot
     tx_sym_pilot2_usrfrm = [];
 elseif strcmp(chest_option, 'dd_zc') || strcmp(chest_option, 'dd_random')   % use pilot sequence
     % check numbers
-    if num.num_delay_pilot_usr < test_option.zc_seq_len+2*num.num_delay_guard_usr
+    if num.num_delay_pilot_usr < test_option.zc_seq_len+num.num_delay_guard_a_usr+num.num_delay_guard_b_usr
         fprintf('num_delay_usr = %d\n', num.num_delay_usr)
         fprintf('num_delay_pilot_usr = %d\n', num.num_delay_pilot_usr)
-        fprintf('num_delay_guard_usr = %d\n', num.num_delay_guard_usr)
+        fprintf('num_delay_guard_a_usr = %d\n', num.num_delay_guard_a_usr)
+        fprintf('num_delay_guard_b_usr = %d\n', num.num_delay_guard_b_usr)
         fprintf('test_option.zc_seq_len = %d\n', test_option.zc_seq_len)
         error('Check numbers!')
     end

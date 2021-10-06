@@ -36,7 +36,8 @@ else
 end
 
 % generate real full-tap delay-doppler channel matrix
-if (strcmp(chest_option, 'real') && test_option.fulltap_eq && strncmp(cheq_option, 'ddeq_', 5)) || test_option.ch_mse
+% if (strcmp(chest_option, 'real') && test_option.fulltap_eq && strncmp(cheq_option, 'ddeq_', 5)) || test_option.ch_mse
+if (strcmp(chest_option, 'real') && test_option.fulltap_eq) || test_option.ch_mse
     % generate effective delay-doppler channel matrix
     % ch_eff_dd = sfft_mtx*ch_eff_tf/sfft_mtx;
     ch_eff_usr_dd = sfft_mtx*ch_eff_usr_tf*isfft_mtx;
@@ -45,7 +46,8 @@ else
 end
 
 % generate real one-tap time-frequency channel
-if (strcmp(chest_option, 'real') && ~test_option.fulltap_eq) || test_option.ch_mse
+% if (strcmp(chest_option, 'real') && ~test_option.fulltap_eq) || test_option.ch_mse
+if strcmp(chest_option, 'real') || test_option.ch_mse
     % extract diagonal elements of real channel
     ch_onetap_usr_tf = zeros(nsubc_usr, nsym_usr);
     for idx_sym = 1:nsym_usr

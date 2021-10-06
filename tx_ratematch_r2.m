@@ -31,4 +31,19 @@ Zo_rep = repmat(Zo_circ, num_buff, 1);
 
 Zo = Zo_rep(1:rm.E_true(idx_cb), :);
 
+% % dump
+% assignin('base', 'u', u)
+% assignin('base', 'x1', x1)
+% assignin('base', 'x2', x2)
+% assignin('base', 'x3', x3)
+% assignin('base', 'y1', y1)
+% assignin('base', 'y2', y2)
+% assignin('base', 'y3', y3)
+% assignin('base', 'y23', y23)
+% assignin('base', 'Yo', Yo)
+% assignin('base', 'Yo_circ', Yo_circ)
+% assignin('base', 'Zo_circ', Zo_circ)
+% assignin('base', 'Zo_rep', Zo_rep)
+% assignin('base', 'Zo', Zo)
+
 end

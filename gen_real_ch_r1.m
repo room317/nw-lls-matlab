@@ -27,12 +27,23 @@ sfft_mtx = num.sfft_mtx;
 isfft_mtx = num.isfft_mtx;
 
 % get channel object info
-% ch_info = info(ch_obj);
-% ch_filter = ch_info.ChannelFilterCoefficients;    % ch_filter_coeff: channel filter coefficient per path
-% npath = length(ch_obj.PathDelays);                % num_path: number of path
-ch_filter = getPathFilters(ch_obj);    % ch_filter_coeff: channel filter coefficient per path
-ch_filter = ch_filter.';
-npath = size(ch_pg, 2);
+if test_option.license
+    ch_filter = getPathFilters(ch_obj);    % ch_filter_coeff: channel filter coefficient per path
+    ch_filter = ch_filter.';
+    npath = size(ch_pg, 2);
+    
+    if size(ch_filter, 2) > nfft
+        ch_filter = ch_filter(:, 1:nfft);
+    end
+else
+    ch_info = info(ch_obj);
+    ch_filter = ch_info.ChannelFilterCoefficients;    % ch_filter_coeff: channel filter coefficient per path
+    npath = length(ch_obj.PathDelays);                % num_path: number of path
+    
+    if size(ch_filter, 2) > nfft
+        ch_filter = ch_filter(:, 1:nfft);
+    end
+end
 
 % initialize
 nfilter = size(ch_filter, 2);

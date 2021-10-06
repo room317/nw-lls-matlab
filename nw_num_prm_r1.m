@@ -1,6 +1,6 @@
 % nw_num generates numerical parameters(numerologies) and constants
 
-function nw_num = nw_num_prm_r1(carrier_freq_mhz, scs_khz, bw_mhz, num_slot, waveform, chest_option, usr_option, sim_option)
+function nw_num = nw_num_prm_r1(carrier_freq_mhz, scs_khz, bw_mhz, num_slot, waveform, chest_option, usr_option, sim_option, test_option)
 
 % timing parameter reference
 % 1 frame = 10 ms
@@ -102,9 +102,9 @@ if strcmp(usr_option, 'su')                 % full spreading
     num_slot_usr = num_slot;                % number of slots per user
     list_usr = 1;                           % user index list
 elseif strcmp(usr_option, 'mu')
-    num_rb_usr = 1;                         % number of resource blocks per user
-    num_slot_usr = 4;                       % number of slots per user
-    list_usr = 1; % [1 2 3 4];                   % user index list
+    num_rb_usr = 4;                         % number of resource blocks per user
+    num_slot_usr = 2;                       % number of slots per user
+    list_usr = 9;                           % user index list (ex. [1 2 3 4])
 else
     error('''test_usr'' shall be either ''su'' or ''mu''.\n')
 end
@@ -131,9 +131,16 @@ if strcmp(waveform, 'ofdm')    % ofdm
         idx_ofdmsym_pilot_usr = reshape([1; 5; 8; 12]+(0:num_slot_usr-1)*num_ofdmsym_slot, 1, []);    % pilot symbol index (should be scalar or vector)
         idx_subc_pilot_usr = repmat([(6:6:num_subc_usr)', (3:6:num_subc_usr)', (6:6:num_subc_usr)', (3:6:num_subc_usr)'], 1, num_slot_usr);
     elseif strcmp(chest_option, 'tf_nr')                                % tf-domain pilots (some symbols for pilots)
-%         idx_ofdmsym_pilot_usr = repmat([3 6 9 12], 1, num_slot);        % pilot symbol index (should be scalar or vector)
-        idx_ofdmsym_pilot_usr = reshape([3; 6; 9; 12]+(0:num_slot_usr-1)*num_ofdmsym_slot, 1, []);    % pilot symbol index (should be scalar or vector)
-        idx_subc_pilot_usr = repmat([(2:2:num_subc_usr)', (2:2:num_subc_usr)', (2:2:num_subc_usr)', (2:2:num_subc_usr)'], 1, num_slot_usr);
+        if test_option.custom_nr_pilot
+            % nr custom plan (100% across time axis)
+            idx_ofdmsym_pilot_usr = reshape((1:num_ofdmsym_slot)'+(0:num_slot_usr-1)*num_ofdmsym_slot, 1, []);    % pilot symbol index (should be scalar or vector)
+            idx_subc_pilot_usr = repmat((2:2:num_subc_usr)', 1, length(idx_ofdmsym_pilot_usr));
+        else
+            % nr traditional plan
+%             idx_ofdmsym_pilot_usr = repmat([3 6 9 12], 1, num_slot);        % pilot symbol index (should be scalar or vector)
+            idx_ofdmsym_pilot_usr = reshape([3; 6; 9; 12]+(0:num_slot_usr-1)*num_ofdmsym_slot, 1, []);    % pilot symbol index (should be scalar or vector)
+            idx_subc_pilot_usr = repmat([(2:2:num_subc_usr)', (2:2:num_subc_usr)', (2:2:num_subc_usr)', (2:2:num_subc_usr)'], 1, num_slot_usr);
+        end
     else    % whole resources for data (real, perfect)
         idx_ofdmsym_pilot_usr = [];
         idx_subc_pilot_usr = [];
@@ -227,8 +234,13 @@ t_usrfrm = (num_fft+num_cp)*num_ofdmsym/sample_rate;   % transmission time inter
 % 4. scale
 %   1) sfft : sqrt(nsubc/nsym)*sfft_mtx;
 %   2) isfft: sqrt(nsym/nsubc)*isfft_mtx;
-sfft_mtx = kron(dftmtx(num_ofdmsym_usr), conj(dftmtx(num_subc_usr))/num_subc_usr);       % kron(A, B)*kron(C, D) = kron(AC, BD)
-isfft_mtx = kron(conj(dftmtx(num_ofdmsym_usr))/num_ofdmsym_usr, dftmtx(num_subc_usr));     % inv(kron(A, B)) = kron(inv(A), inv(B))
+if test_option.max_tbs_calc
+    sfft_mtx = [];
+    isfft_mtx = [];
+else
+    sfft_mtx = kron(dftmtx(num_ofdmsym_usr), conj(dftmtx(num_subc_usr))/num_subc_usr);       % kron(A, B)*kron(C, D) = kron(AC, BD)
+    isfft_mtx = kron(conj(dftmtx(num_ofdmsym_usr))/num_ofdmsym_usr, dftmtx(num_subc_usr));     % inv(kron(A, B)) = kron(inv(A), inv(B))
+end
 
 % output
 % nw_num.nfft = nfft;

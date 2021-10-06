@@ -1,4 +1,4 @@
-% run a single otfs symbol
+% run a single otfs symbol (cell-based)
 % - sim, cc, rm, num: simulation parameters
 % - snr_db: snr(db)
 % - ch: channel parameter
@@ -18,9 +18,10 @@
 % - real channel compensation in dd domain added: 2020.02.19
 % - variable name changed: 2020.06.09
 % - slot-based to user-frame-based simulation (user frame = multiple slots)
-% - full-tap real channel regeneration added: 2020.0908
+% - full-tap real channel regeneration added: 2020.09.08
+% - cell-based processing: 2021.10.06, bit-matched with lte toolbox
 
-function [pkt_error, tx_papr, ch_mse, sym_err_var, ch_est_rbs_dd] = otfs_dnlink_singlerun_r1(sim, cc, rm, num, snr_db, tx_crc, rx_crc, turbo_enc, turbo_dec, fading_ch, chest_option, cheq_option, test_option)
+function [pkt_error, tx_papr, ch_mse, sym_err_var, ch_est_rbs_dd] = otfs_dnlink_singlerun_r2(rv_idx, cc, rm, num, snr_db, tx_crc_a, tx_crc_b, rx_crc_a, fading_ch, chest_option, cheq_option, test_option)
 
 % calculate snr and noise variance
 %   - snr_db(input) is consigered to be the snr(db) for user data in delay-doppler domain
@@ -33,17 +34,17 @@ noise_var = 10^((-0.1)*snr_db);
 %% base station (tx) operation
 
 % initialize
-tx_bit = zeros(sim.len_tb_bit, num.num_usr);
-tx_sym = zeros(num.num_qamsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
-tx_sym_rbs_dd = zeros(num.num_delay_usr, num.num_doppler_usr, sum(rm.num_usrfrm_cb), num.num_usr);
-tx_sym_rbs_tf = zeros(num.num_subc_usr, num.num_ofdmsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
-tx_sym_bw = zeros(num.num_subc_bw, num.num_ofdmsym, sum(rm.num_usrfrm_cb));
+tx_bit = zeros(cc.A, num.num_usr);
+tx_sym = zeros(num.num_qamsym_usr, rm.N_RB, num.num_usr);
+tx_sym_rbs_dd = zeros(num.num_delay_usr, num.num_doppler_usr, rm.N_RB, num.num_usr);
+tx_sym_rbs_tf = zeros(num.num_subc_usr, num.num_ofdmsym_usr, rm.N_RB, num.num_usr);
+tx_sym_bw = zeros(num.num_subc_bw, num.num_ofdmsym, rm.N_RB);
 
 % generate and map per-user qam symbols
 for idx_usr = 1:num.num_usr
     if ~test_option.pilot_only
         % generate transmit symbols per user
-        [tx_bit_usr, tx_sym_usr] = gen_tx_qamsym_usr_r1(sim, cc, rm, num, tx_crc, turbo_enc);
+        [tx_bit_usr, tx_sym_usr] = gen_tx_qamsym_usr_r2(rv_idx, cc, rm, num, tx_crc_a, tx_crc_b, test_option);
         tx_bit(:, idx_usr) = tx_bit_usr;
         tx_sym(:, :, idx_usr) = tx_sym_usr;
     end
@@ -56,7 +57,7 @@ for idx_usr = 1:num.num_usr
     list_ofdmsym_usr = (idx_slot_usr-1)*num.num_ofdmsym_slot+1:(idx_slot_usr-1)*num.num_ofdmsym_slot+num.num_ofdmsym_usr;   % user ofdm symbol list
     
     % map user symbols
-    for idx_usrfrm = 1:sum(rm.num_usrfrm_cb)
+    for idx_usrfrm = 1:rm.N_RB
         % extract user frame data per user
         if test_option.pilot_only
             tx_sym_data_usrfrm = zeros(num.num_qamsym_usr, 1);
@@ -85,10 +86,10 @@ for idx_usr = 1:num.num_usr
 end
 
 % initialize
-tx_ofdmsym_serial = zeros((num.num_fft+num.num_cp)*num.num_ofdmsym, sum(rm.num_usrfrm_cb));
+tx_ofdmsym_serial = zeros((num.num_fft+num.num_cp)*num.num_ofdmsym, rm.N_RB);
 
 % modulate tx symbols per user frame (common for all users)
-for idx_usrfrm = 1:sum(rm.num_usrfrm_cb)
+for idx_usrfrm = 1:rm.N_RB
     % map bandwidth to the center of fft range
     tx_sym_nfft_shift = zeros(num.num_fft, num.num_ofdmsym);
     tx_sym_nfft_shift((num.num_fft/2)-(num.num_subc_bw/2)+1:(num.num_fft/2)+(num.num_subc_bw/2), :) = squeeze(tx_sym_bw(:, :, idx_usrfrm));
@@ -107,17 +108,17 @@ end
 %% channel
 
 % initialize
-tx_ofdmsym_faded = zeros((num.num_fft+num.num_cp)*num.num_ofdmsym, sum(rm.num_usrfrm_cb), num.num_usr);
-rx_ofdmsym_serial = zeros((num.num_fft+num.num_cp)*num.num_ofdmsym, sum(rm.num_usrfrm_cb), num.num_usr);
+tx_ofdmsym_faded = zeros((num.num_fft+num.num_cp)*num.num_ofdmsym, rm.N_RB, num.num_usr);
+rx_ofdmsym_serial = zeros((num.num_fft+num.num_cp)*num.num_ofdmsym, rm.N_RB, num.num_usr);
 if ~test_option.awgn && (test_option.ch_mse || strcmp(chest_option, 'real'))
-    ch_real_mat_tf = zeros(num.num_subc_bw, num.num_subc_bw, num.num_ofdmsym, sum(rm.num_usrfrm_cb), num.num_usr);
+    ch_real_mat_tf = zeros(num.num_subc_bw, num.num_subc_bw, num.num_ofdmsym, rm.N_RB, num.num_usr);
 else
     ch_real_mat_tf = [];
 end
 
 % simulate per-user and per-user-frame
 for idx_usr = 1:num.num_usr
-    for idx_usrfrm = 1:sum(rm.num_usrfrm_cb)
+    for idx_usrfrm = 1:rm.N_RB
         % pass signal through channel
         if test_option.awgn
             tx_ofdmsym_usr_faded = tx_ofdmsym_serial(:, idx_usrfrm);
@@ -131,6 +132,7 @@ for idx_usr = 1:num.num_usr
             rx_ofdmsym_serial(:, idx_usrfrm, idx_usr) = tx_ofdmsym_usr_faded;
         else
             rx_ofdmsym_serial(:, idx_usrfrm, idx_usr) = awgn(tx_ofdmsym_usr_faded, snr_db, 0);
+%             rx_ofdmsym_serial(:, idx_usrfrm, idx_usr) = tx_ofdmsym_usr_faded;
 %             rx_ofdmsym_serial(:, idx_usrfrm, idx_usr) = awgn(tx_ofdmsym_usr_faded, snr_db_adj, 'measured');
 %             rx_ofdmsym_serial(:, idx_usrfrm, idx_usr) = tx_ofdmsym_usr_faded+(sqrt(1/2)*10^(-0.1*snr_db_adj)*complex(randn(size(tx_ofdmsym_usr_faded)), randn(size(tx_ofdmsym_usr_faded))));
         end
@@ -161,18 +163,18 @@ end
 %% mobile station (rx) operation per user
 
 % initialize
-rx_bit = zeros(sim.len_tb_bit, num.num_usr);
+rx_bit = zeros(cc.A, num.num_usr);
 rx_crc_error = zeros(1, num.num_usr);
-rx_sym = zeros(num.num_qamsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
-rx_sym_rbs_tf = zeros(num.num_subc_usr, num.num_ofdmsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
-rx_sym_rbs_dd_eq = zeros(num.num_delay_usr, num.num_doppler_usr, sum(rm.num_usrfrm_cb), num.num_usr);
-error_var = zeros(num.num_qamsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
+rx_sym = zeros(num.num_qamsym_usr, rm.N_RB, num.num_usr);
+rx_sym_rbs_tf = zeros(num.num_subc_usr, num.num_ofdmsym_usr, rm.N_RB, num.num_usr);
+rx_sym_rbs_dd_eq = zeros(num.num_delay_usr, num.num_doppler_usr, rm.N_RB, num.num_usr);
+error_var = zeros(num.num_qamsym_usr, rm.N_RB, num.num_usr);
 if ~test_option.awgn && test_option.ch_mse
     if strcmp(chest_option, 'real')
-        ch_real_eff_tf = zeros(num.num_subc_usr*num.num_ofdmsym_usr, num.num_subc_usr*num.num_ofdmsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
+        ch_real_eff_tf = zeros(num.num_subc_usr*num.num_ofdmsym_usr, num.num_subc_usr*num.num_ofdmsym_usr, rm.N_RB, num.num_usr);
     end
-    ch_est_rbs_tf = zeros(num.num_subc_usr, num.num_ofdmsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
-    ch_est_rbs_dd = zeros(num.num_delay_usr, num.num_doppler_usr, sum(rm.num_usrfrm_cb), num.num_usr);
+    ch_est_rbs_tf = zeros(num.num_subc_usr, num.num_ofdmsym_usr, rm.N_RB, num.num_usr);
+    ch_est_rbs_dd = zeros(num.num_delay_usr, num.num_doppler_usr, rm.N_RB, num.num_usr);
 else
     ch_real_eff_tf = [];
     ch_est_rbs_tf = [];
@@ -181,7 +183,7 @@ end
 
 % demodulate rx symbols per user and per user frame
 for idx_usr = 1:num.num_usr
-    for idx_usrfrm = 1:sum(rm.num_usrfrm_cb)
+    for idx_usrfrm = 1:rm.N_RB
         % reshape
         rx_ofdmsym_cp = reshape(squeeze(rx_ofdmsym_serial(:, idx_usrfrm, idx_usr)), num.num_fft+num.num_cp, []);
         
@@ -350,7 +352,7 @@ for idx_usr = 1:num.num_usr
     
     if ~test_option.pilot_only
         % generate received bits per user
-        [rx_bit_usr, rx_crc_error_usr] = gen_rx_bit_usr_r1(rx_sym(:, :, idx_usr), error_var(:, :, idx_usr), rx_crc, turbo_dec, sim, cc, rm);
+        [rx_bit_usr, rx_crc_error_usr] = gen_rx_bit_usr_r2(rx_sym(:, :, idx_usr), error_var(:, :, idx_usr), rv_idx, rx_crc_a, cc, rm, test_option);
         rx_bit(:, idx_usr) = rx_bit_usr;
         rx_crc_error(:, idx_usr) = rx_crc_error_usr;
     end
@@ -381,9 +383,9 @@ if ~test_option.awgn && test_option.ch_mse
         end
         
         % generate effective tf channel
-        ch_est_eff_tf = zeros(num.num_subc_usr*num.num_ofdmsym_usr, num.num_subc_usr*num.num_ofdmsym_usr, sum(rm.num_usrfrm_cb), num.num_usr);
+        ch_est_eff_tf = zeros(num.num_subc_usr*num.num_ofdmsym_usr, num.num_subc_usr*num.num_ofdmsym_usr, rm.N_RB, num.num_usr);
         for idx_usr = 1:num.num_usr
-            for idx_usrfrm = 1:sum(rm.num_usrfrm_cb)
+            for idx_usrfrm = 1:rm.N_RB
                 ch_est_eff_tf(:, :, idx_usrfrm, idx_usr) = diag(reshape(ch_est_rbs_tf(:, :, idx_usrfrm, idx_usr), [], 1));
             end
         end
@@ -399,7 +401,7 @@ if ~test_option.awgn && test_option.ch_mse
     end
     for idx_usr=1:num.num_usr
         fprintf('user %d:    tf channel est rmse: %6.3f\n', idx_usr, sqrt(ch_mse(1, idx_usr)))
-%         for idx_usrfrm = 1:sum(rm.num_usrfrm_cb)
+%         for idx_usrfrm = 1:rm.N_RB
 %             test_ch_real_onetap_tf = reshape(diag(ch_real_eff_tf(:, :, idx_usrfrm, idx_usr)), num.num_subc_usr, num.num_ofdmsym_usr);
 %             test_ch_real_onetap_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(test_ch_real_onetap_tf, [], 1), [], 2);
 %             if strcmp(chest_option, 'real') && test_option.fulltap_eq

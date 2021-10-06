@@ -49,6 +49,6 @@ else
 end
 
 % calculate noise variance (common for both)
-noise_var_mat_dd = noise_var*abs(sum(ch_eff_dd, 2)).^2;
+noise_var_mat_dd = reshape(noise_var*abs(sum(ch_eff_dd, 2)).^2, num.num_delay_usr, num.num_doppler_usr);
 
 end

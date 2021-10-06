@@ -66,4 +66,14 @@ rx_bit = rx_bit_buff(1:sim.len_tb_bit);
 % rearrange crc
 rx_crc_error = sum(double(rx_crc_error_cb))>0;
 
+% % dump
+% assignin('base', 'rx_bit', rx_bit);
+% assignin('base', 'rx_bit_buff', rx_bit_buff);
+% assignin('base', 'rx_bit_crc_removed_cb', rx_bit_crc_removed_cb);
+% assignin('base', 'rx_bit_dec_cb', rx_bit_dec_cb);
+% assignin('base', 'rx_bit_ratematch_cb', rx_bit_ratematch_cb);
+% assignin('base', 'rx_bit_demod_cb', rx_bit_demod_cb);
+% assignin('base', 'rx_sym_serial_cb', rx_sym_serial_cb);
+% assignin('base', 'rx_sym', rx_sym);
+
 end

@@ -78,7 +78,12 @@ end
 
 % % dump
 % assignin('base', 'tx_bit', tx_bit);
+% assignin('base', 'tx_bit_pad', tx_bit_pad);
+% assignin('base', 'tx_bit_buff', tx_bit_buff);
+% assignin('base', 'tx_bit_crc_cb', tx_bit_crc_cb);
+% assignin('base', 'tx_bit_enc_cb', tx_bit_enc_cb);
+% assignin('base', 'tx_bit_ratematch_cb', tx_bit_ratematch_cb);
+% assignin('base', 'tx_sym_serial_cb', tx_sym_serial_cb);
 % assignin('base', 'tx_sym', tx_sym);
-% assignin('base', 'tx_sym_rbs', tx_sym_rbs);
 
 end

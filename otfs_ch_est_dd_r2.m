@@ -271,7 +271,7 @@ if test_option.ch_tf_edge_interp
 else
     ch_est_rbs_dd = ch_est_rbs_raw;
 end
-    
+
 % % test
 % if test_option.ch_mse
 %     ch_real_rbs_usr_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(ch_real_rbs_usr_tf, [], 1), [], 2);
@@ -279,11 +279,11 @@ end
 %     fprintf('pilot power: %8.4f\n', mean(abs(ch_est_rbs_dd).^2, 'all'))
 %     fprintf('ch est mse : %8.4f\n', mean(abs(ch_real_rbs_usr_dd-ch_est_rbs_dd).^2, 'all'))
 %     figure
-%     subplot(1, 3, 1), mesh(1:num.num_doppler_usr, 1:num.num_delay_usr, abs(ch_real_rbs_usr_dd))   % dd real channel
+%     subplot(1, 3, 1), mesh(1:num.num_doppler_usr, 1:num.num_delay_usr, abs(fftshift(fftshift(ch_real_rbs_usr_dd, 1), 2)))   % dd real channel
 %     xlabel('doppler'), ylabel('delay'), zlabel('amplitude'), title('perfect channel'), axis_ref = axis;
-%     subplot(1, 3, 2), mesh(1:num.num_doppler_usr, 1:num.num_delay_usr, abs(ch_est_rbs_dd))   % dd real channel
+%     subplot(1, 3, 2), mesh(1:num.num_doppler_usr, 1:num.num_delay_usr, abs(fftshift(fftshift(ch_est_rbs_dd, 1), 2)))   % dd real channel
 %     xlabel('doppler'), ylabel('delay'), zlabel('amplitude'), title('estimated channel'), axis(axis_ref)
-%     subplot(1, 3, 3), mesh(1:num.num_doppler_usr, 1:num.num_delay_usr, abs(ch_real_rbs_usr_dd-ch_est_rbs_dd))   % dd real channel
+%     subplot(1, 3, 3), mesh(1:num.num_doppler_usr, 1:num.num_delay_usr, abs(fftshift(fftshift(ch_real_rbs_usr_dd-ch_est_rbs_dd, 1), 2)))   % dd real channel
 %     xlabel('doppler'), ylabel('delay'), zlabel('rmse'), title('channel estimation error'), axis(axis_ref)
 % end
 
@@ -308,6 +308,11 @@ end
 %     assignin('base', 'rx_sym_pilot2_despread', rx_sym_pilot2_despread)
 %     assignin('base', 'rx_sym_pilot_despread', rx_sym_pilot_despread)
 %     assignin('base', 'rx_sym_pilot_imp_resp', rx_sym_pilot_imp_resp)
+% elseif strcmp(chest_option, 'dd_zc')
+%     assignin('base', 'rx_sym_pilot1_despread', rx_sym_pilot1_despread)
+%     assignin('base', 'rx_sym_pilot_imp_resp', rx_sym_pilot_imp_resp)
+% elseif strcmp(chest_option, 'dd_impulse')
+%     assignin('base', 'rx_sym_pilot_imp_resp', rx_sym_pilot_imp_resp)
 % end
 % assignin('base', 'rx_ch_info_rbs', rx_ch_info_rbs)
 % assignin('base', 'rx_ch_info_rbs_cntr', rx_ch_info_rbs_cntr)
@@ -327,6 +332,6 @@ end
 % if test_option.ch_mse
 %     assignin('base', 'ch_real_rbs_usr_dd', ch_real_rbs_usr_dd)
 % end
-% pause
+% % pause
 
 end

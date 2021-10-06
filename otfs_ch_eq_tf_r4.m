@@ -91,18 +91,16 @@ end
 % calculate noise variance (common for both)
 if strcmp(chest_option, 'real') && test_option.fulltap_eq
 %     noise_var_mat_dd = noise_var*reshape(abs(sum(ch_eff_dd, 2)).^2, num.num_subc_usr, []);
-    noise_var_mat_dd = noise_var*reshape(sum(abs(inv(ch_real_eff_dd), 2).^2, 2), num.num_subc_usr, []);
+    noise_var_mat_dd = noise_var*reshape(sum(abs(inv(ch_real_eff_dd)).^2, 2), num.num_subc_usr, []);
 else
-    noise_var_mat_dd = noise_var*sum(abs(1./ch_est_rbs_tf).^2, 'all')/(num.num_doppler_usr*num.num_delay_usr);
+    noise_var_mat_dd = noise_var*sum(abs(1./ch_est_rbs_tf).^2, 'all')/(num.num_doppler_usr*num.num_delay_usr)*ones(num.num_delay_usr, num.num_doppler_usr);
 end
-
 
 % assignin('base', 'rx_sym_rbs_tf', rx_sym_rbs_tf)
 % assignin('base', 'ch_real_eff_dd', ch_real_eff_dd)
 % assignin('base', 'ch_real_eff_tf', ch_real_eff_tf)
 % assignin('base', 'ch_est_rbs_dd', ch_est_rbs_dd)
 % assignin('base', 'ch_est_rbs_tf', ch_est_rbs_tf)
-% assignin('base', 'ch_eff_dd', ch_eff_dd)
 % assignin('base', 'noise_var', noise_var)
 % assignin('base', 'noise_var_mat_dd', noise_var_mat_dd)
 % pause
