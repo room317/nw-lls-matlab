@@ -98,6 +98,7 @@ while 1
     test_option.rv_idx = 0;                 % redundancy version numer
     test_option.max_tbs_calc = false;       % skip sfft calc. when max tbs calc.
     test_option.custom_nr_pilot = false;    % true for activating custom nr pilots
+    test_option.qam_modem_toolbox = false;  % true to use lte toolbox qam mod/demod
     
     % check test option
     if test_option.otfs_pilot_pwr_set && ~strcmp(chest_option, 'dd_impulse')
@@ -111,7 +112,7 @@ while 1
     % set equalization option
     nw_cc = nw_cc_prm_r1(len_tb_bit);
     nw_num = nw_num_prm_r1(carrier_freq_mhz, scs_khz, bw_mhz, num_slot, waveform, chest_option, usr_option, sim_option, test_option);
-    nw_rm = nw_rm_prm_r1(mcs, nw_cc, nw_num, sim_option);
+    nw_rm = nw_rm_prm_r1(mcs, nw_cc, nw_num, sim_option, test_option);
     nw_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, delay_spread_rms_us);
     
     % set additional test option
@@ -319,7 +320,7 @@ while 1
     if test_option.ch_mse && strcmp(waveform, 'otfs')
         for idx_usr = 1:nw_num.num_usr
             figure
-            mesh(1:nw_num.num_doppler_usr, 1:nw_num.num_delay_usr, sqrt(fftshift(fftshift(sum_ch_pwr/(sim_cnt*sum(nw_rm.num_usrfrm_cb)*nw_num.num_usr), 1), 2)))
+            mesh(1:nw_num.num_doppler_usr, 1:nw_num.num_delay_usr, sqrt(fftshift(fftshift(sum_ch_pwr/(sim_cnt*nw_rm.N_RB*nw_num.num_usr), 1), 2)))
             xlabel('Doppler'), ylabel('Delay'), zlabel('Average Channel Amplitude'), title('Channel Estimation')
         end
     end

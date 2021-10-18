@@ -36,8 +36,13 @@ if test_option.license
     % rate matching and code block concatenation
     tx_bit_ratematch = lteRateMatchTurbo(tx_bit_enc, rm.G, rv_idx);
     
-    % symbol modulate the codeword
-    tx_sym_serial = lteSymbolModulate(tx_bit_ratematch, rm.Q_mod);
+    if test_option.qam_modem_toolbox
+        % symbol modulate the codeword
+        tx_sym_serial = lteSymbolModulate(tx_bit_ratematch, rm.Q_mod);
+    else
+        % modulate bit stream
+        tx_sym_serial = qammod(tx_bit_ratematch(:), 2^rm.Q_m, rm.lteSymMap, 'InputType', 'bit', 'UnitAveragePower', true);
+    end
 else
     % crc calculation
     tx_bit_crc = tx_crc_a(tx_bit);

@@ -6,10 +6,16 @@
 function ch_conv_clip = gen_ch_clip(ch_conv_real, num)
 
 % set clipping area
-delay_pilot_ratio = 0.24;        % num_delay_pilot/num_delay_data (40% of available delay grids, even number)
+% delay_pilot_ratio = 0.24;        % num_delay_pilot/num_delay_data (40% of available delay grids, even number)
+% doppler_pilot_ratio = 1.0;      % num_doppler_pilot/num_doppler_data (100% of available doppler grids)
+% delay_guard_a_ratio = 0.44;        % num_delay_guard/num_delay_pilot (20% of pilot delay grids)
+% delay_guard_b_ratio = 0.06;        % num_delay_guard/num_delay_pilot (20% of pilot delay grids)
+% doppler_guard_ratio = 0.0;      % num_doppler_guard/num_doppler_pilot (20% of pilot doppler grids)
+
+delay_pilot_ratio = 0.9;        % num_delay_pilot/num_delay_data (40% of available delay grids, even number)
 doppler_pilot_ratio = 1.0;      % num_doppler_pilot/num_doppler_data (100% of available doppler grids)
-delay_guard_a_ratio = 0.44;        % num_delay_guard/num_delay_pilot (20% of pilot delay grids)
-delay_guard_b_ratio = 0.06;        % num_delay_guard/num_delay_pilot (20% of pilot delay grids)
+delay_guard_a_ratio = 0.3;        % num_delay_guard/num_delay_pilot (20% of pilot delay grids)
+delay_guard_b_ratio = 0.05;        % num_delay_guard/num_delay_pilot (20% of pilot delay grids)
 doppler_guard_ratio = 0.0;      % num_doppler_guard/num_doppler_pilot (20% of pilot doppler grids)
 
 % user parameters for otfs

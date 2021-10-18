@@ -170,13 +170,15 @@ rx_sym_rbs_tf = zeros(num.num_subc_usr, num.num_ofdmsym_usr, rm.N_RB, num.num_us
 rx_sym_rbs_dd_eq = zeros(num.num_delay_usr, num.num_doppler_usr, rm.N_RB, num.num_usr);
 error_var = zeros(num.num_qamsym_usr, rm.N_RB, num.num_usr);
 if ~test_option.awgn && test_option.ch_mse
-    if strcmp(chest_option, 'real')
+    if strcmp(chest_option, 'real') || test_option.ch_mse
         ch_real_eff_tf = zeros(num.num_subc_usr*num.num_ofdmsym_usr, num.num_subc_usr*num.num_ofdmsym_usr, rm.N_RB, num.num_usr);
+        ch_real_eff_dd = zeros(num.num_subc_usr*num.num_ofdmsym_usr, num.num_subc_usr*num.num_ofdmsym_usr, rm.N_RB, num.num_usr);
     end
     ch_est_rbs_tf = zeros(num.num_subc_usr, num.num_ofdmsym_usr, rm.N_RB, num.num_usr);
     ch_est_rbs_dd = zeros(num.num_delay_usr, num.num_doppler_usr, rm.N_RB, num.num_usr);
 else
     ch_real_eff_tf = [];
+    ch_real_eff_dd = [];
     ch_est_rbs_tf = [];
     ch_est_rbs_dd = [];
 end
@@ -297,6 +299,7 @@ for idx_usr = 1:num.num_usr
             % test: to check and calculate channel estimation error
             if test_option.ch_mse
                 ch_real_eff_tf(:, :, idx_usrfrm, idx_usr) = ch_real_eff_usr_tf;
+                ch_real_eff_dd(:, :, idx_usrfrm, idx_usr) = ch_real_eff_usr_dd;
                 
                 if isempty(ch_est_rbs_usr_tf)
                     ch_est_rbs_usr_tf = sqrt(num.num_doppler_usr/num.num_delay_usr)*fft(ifft(ch_est_rbs_usr_dd, [], 2), [], 1);
@@ -377,11 +380,6 @@ if ~test_option.awgn && test_option.ch_mse
     if strcmp(chest_option, 'real') && test_option.fulltap_eq
         ch_mse = zeros(1, num.num_usr);
     else
-        % generate tf channel
-        if isempty(ch_est_rbs_tf)
-            ch_est_rbs_tf = sqrt(num.num_doppler_usr/num.num_delay_usr)*fft(ifft(ch_est_rbs_dd, [], 2), [], 1);
-        end
-        
         % generate effective tf channel
         ch_est_eff_tf = zeros(num.num_subc_usr*num.num_ofdmsym_usr, num.num_subc_usr*num.num_ofdmsym_usr, rm.N_RB, num.num_usr);
         for idx_usr = 1:num.num_usr
@@ -390,8 +388,45 @@ if ~test_option.awgn && test_option.ch_mse
             end
         end
         
-        % calculate channel estimation error (per time-frequency grid)
-        ch_mse = mean(abs(ch_real_eff_tf-ch_est_eff_tf).^2, [1 2 3])*num.num_subc_usr*num.num_ofdmsym_usr;
+        % generate effective dd channel
+        ch_est_eff_dd = zeros(num.num_subc_usr*num.num_ofdmsym_usr, num.num_subc_usr*num.num_ofdmsym_usr, rm.N_RB, num.num_usr);
+        for idx_usr = 1:num.num_usr
+            for idx_usrfrm = 1:rm.N_RB
+                ch_est_eff_dd(:, :, idx_usrfrm, idx_usr) = gen_eff_ch(squeeze(ch_est_rbs_dd(:, :, idx_usrfrm, idx_usr)));
+            end
+        end
+        
+        % generate inverse of effective dd channel
+        % and calculate channel estimation error
+        ch_mse_usrfrm = zeros(1, rm.N_RB, num.num_usr);
+        for idx_usr = 1:num.num_usr
+            for idx_usrfrm = 1:rm.N_RB
+                inv_ch_est_rbs_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(1./ch_est_rbs_tf(:, :, idx_usrfrm, idx_usr), [], 1), [], 2);
+                inv_ch_est_eff_dd = gen_eff_ch(inv_ch_est_rbs_dd);
+%                 assignin('base', 'inv_ch_est_eff_dd', inv_ch_est_eff_dd)
+%                 assignin('base', 'ch_est_rbs_dd', ch_est_rbs_dd)
+%                 assignin('base', 'ch_est_eff_dd', ch_est_eff_dd)
+%                 assignin('base', 'ch_real_eff_dd', ch_real_eff_dd)
+%                 assignin('base', 'ch_real_eff_tf', ch_real_eff_tf)
+%                 pause
+                ch_mse_usrfrm(1, idx_usrfrm, idx_usr) = mean(abs(sum(inv_ch_est_eff_dd*ch_real_eff_dd-eye(num.num_subc_usr*num.num_ofdmsym_usr))).^2, 'all');
+            end
+        end
+        ch_mse = mean(ch_mse_usrfrm, [1 2]);
+        
+%         % calculate channel estimation error (per time-frequency grid)
+%         ch_mse1 = mean(abs(ch_real_eff_tf-ch_est_eff_tf).^2, [1 2 3])*num.num_subc_usr*num.num_ofdmsym_usr;
+%         ch_mse2 = squeeze(mean(abs(sum(ch_real_eff_tf-ch_est_eff_tf, 2)).^2, [1 2 3]));
+%         ch_mse3 = squeeze(mean(abs(sum(ch_real_eff_dd-ch_est_eff_dd, 2)).^2, [1 2 3]));
+% 
+%         assignin('base', 'ch_real_eff_tf', ch_real_eff_tf)
+%         assignin('base', 'ch_est_eff_tf', ch_est_eff_tf)
+%         assignin('base', 'ch_real_eff_dd', ch_real_eff_dd)
+%         assignin('base', 'ch_est_eff_dd', ch_est_eff_dd)
+%         assignin('base', 'ch_mse', ch_mse)
+%         assignin('base', 'ch_mse1', ch_mse1)
+%         assignin('base', 'ch_mse2', ch_mse2)
+%         assignin('base', 'ch_mse3', ch_mse3)
         
 %         fprintf('ch mse:')
 %         fprintf(' %10.6f', ch_mse)
@@ -399,8 +434,8 @@ if ~test_option.awgn && test_option.ch_mse
 %         assignin('base', 'ch_real_eff_tf', ch_real_eff_tf)
 %         assignin('base', 'ch_est_eff_tf', ch_est_eff_tf)
     end
-    for idx_usr=1:num.num_usr
-        fprintf('user %d:    tf channel est rmse: %6.3f\n', idx_usr, sqrt(ch_mse(1, idx_usr)))
+%     for idx_usr=1:num.num_usr
+%         fprintf('user %d:    tf channel est rmse: %6.3f\n', idx_usr, sqrt(ch_mse(1, idx_usr)))
 %         for idx_usrfrm = 1:rm.N_RB
 %             test_ch_real_onetap_tf = reshape(diag(ch_real_eff_tf(:, :, idx_usrfrm, idx_usr)), num.num_subc_usr, num.num_ofdmsym_usr);
 %             test_ch_real_onetap_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(test_ch_real_onetap_tf, [], 1), [], 2);
@@ -436,7 +471,7 @@ if ~test_option.awgn && test_option.ch_mse
 %             subplot(2, 3, 6), mesh(1:size(test_rx_sym_eq_dd, 2), 1:size(test_rx_sym_eq_dd, 1), imag(test_rx_sym_eq_dd))
 %             pause
 %         end
-    end
+%     end
 else
     ch_mse = [];
 end

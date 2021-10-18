@@ -1,7 +1,7 @@
 % ref: 3gpp ts 36.212 (36212-e40)
 % cell based channel coding parameters
 
-function nw_rm = nw_rm_prm_r1(mcs, cc, num, sim_option)
+function nw_rm = nw_rm_prm_r1(mcs, cc, num, sim_option, test_option)
 
 % mcs table (Qm, code_rate_x1024)
 %     mcs 16 (for test): 16QAM code rate 2/3
@@ -78,6 +78,12 @@ for r = 1:cc.C
     else
         E(r) = N_L*Q_m*ceil(G_/cc.C);
     end
+end
+
+% test option
+if test_option.pilot_only
+    N_RB = 1;
+    E = 0;
 end
 
 % output

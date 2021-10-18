@@ -285,8 +285,8 @@ if ~test_option.awgn && test_option.ch_mse
 %         assignin('base', 'ch_real_eff_tf', ch_real_eff_tf)
 %         assignin('base', 'ch_est_eff', ch_est_eff)
     end
-    for idx_usr=1:num.num_usr
-        fprintf('user %d:    tf channel est rmse: %6.3f\n', idx_usr, sqrt(ch_mse(1, idx_usr)))
+%     for idx_usr=1:num.num_usr
+%         fprintf('user %d:    tf channel est rmse: %6.3f\n', idx_usr, sqrt(ch_mse(1, idx_usr)))
 %         for idx_usrfrm = 1:rm.N_RB
 %             test_ch_real_onetap_tf = reshape(diag(ch_real_eff_tf(:, :, idx_usrfrm, idx_usr)), num.num_subc_usr, num.num_ofdmsym_usr);
 %             if strcmp(chest_option, 'real') && test_option.fulltap_eq
@@ -313,7 +313,7 @@ if ~test_option.awgn && test_option.ch_mse
 %             subplot(2, 3, 6), mesh(1:size(test_rx_sym_eq, 2), 1:size(test_rx_sym_eq, 1), imag(test_rx_sym_eq))
 %             pause
 %         end
-    end
+%     end
 else
     ch_mse = [];
 end

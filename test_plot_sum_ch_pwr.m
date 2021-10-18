@@ -11,8 +11,8 @@ option_plot_thr = false;
 option_chest = 'dd';
 
 % set parameters (manually)
-df = 60e3;
-nfft = 256;
+df = scs_khz*1e3;
+nfft = nw_num.num_fft;
 
 % set parameters (automatically)
 fs = df*nfft;
@@ -54,7 +54,7 @@ end
 
 % set threshold
 if option_plot_thr
-    thr = 0.001*max(sum_ch_pwr, [], 'all');     % 0.001 of max power 
+    thr = 0.0025*max(sum_ch_pwr, [], 'all');     % 0.001 of max power 
     thr_ch_pwr = double(sum_ch_pwr > thr);
     
     % plot

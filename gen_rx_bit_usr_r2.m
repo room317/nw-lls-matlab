@@ -15,8 +15,18 @@ rx_sym_serial = reshape(rx_sym, [], 1);
 
 % channel coding, multiplexing and interleaving
 if test_option.license
-    % symbol modulate the codeword
-    rx_bit_demod = lteSymbolDemodulate(rx_sym_serial, rm.Q_mod, 'Soft');
+    if test_option.qam_modem_toolbox
+        % symbol modulate the codeword
+        rx_bit_demod = lteSymbolDemodulate(rx_sym_serial, rm.Q_mod, 'Soft');
+    else
+        % serialize noise variance
+        error_var_serial = reshape(error_var, [], 1);
+        
+        % demap qam symbols
+        rx_bit_demod = (-1) * qamdemod(rx_sym_serial.', 2^rm.Q_m, rm.lteSymMap, 'UnitAveragePower', true, ...
+            'OutputType', 'approxllr', 'NoiseVariance', error_var_serial.');
+        rx_bit_demod = rx_bit_demod(:);
+    end
     
     % rate recovery
     rx_bit_raterecover = lteRateRecoverTurbo(rx_bit_demod, cc.A, rv_idx);
