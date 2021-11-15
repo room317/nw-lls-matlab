@@ -78,7 +78,7 @@ while 1
     test_option.ch_est_xcorr_prune = false;         % channel estimation pilot resource pruning after sequence pilot xcorr
     test_option.otfs_pilot_pwr_set = false;         % valid only when otfs_pilot_plan is 'impulse'
     test_option.zc_seq_len = 37;                                    % zadoff-chu sequence length (37)
-    test_option.zc_seq = zadoffChuSeq(1,test_option.zc_seq_len);    % zadoff-chu sequence
+    test_option.zc_seq = zadoffChuSeq(1, test_option.zc_seq_len);   % zadoff-chu sequence
     test_option.golay_seq_len = 32;                                 % golay sequence length (32, 64, 128)
     if test_option.license
         [Ga, Gb] = wlanGolaySequence(test_option.golay_seq_len);    % complementary golay sequence
@@ -88,6 +88,9 @@ while 1
     end
     test_option.golay_seq_a = Ga;           % complementary golay sequence
     test_option.golay_seq_b = Gb;           % complementary golay sequence
+    test_option.rand_seq_len = 2;                                                                     % random sequence length
+    rand_seq = complex(randn(test_option.rand_seq_len, 1), randn(test_option.rand_seq_len, 1));       % random sequence
+    test_option.rand_seq = rand_seq/sqrt(mean(abs(rand_seq).^2, 'all'));                                % random sequence
     test_option.fulltap_eq = false;         % use full-tap real channel for equalization
     test_option.common_usr_ch = true;       % use common channel per user
     test_option.gpu_flag = false;           % use gpu for real channel generation
@@ -99,6 +102,7 @@ while 1
     test_option.max_tbs_calc = false;       % skip sfft calc. when max tbs calc.
     test_option.custom_nr_pilot = false;    % true for activating custom nr pilots
     test_option.qam_modem_toolbox = false;  % true to use lte toolbox qam mod/demod
+    test_option.perfect_ce = false;         % perfect channel estimation (forced)
     
     % check test option
     if test_option.otfs_pilot_pwr_set && ~strcmp(chest_option, 'dd_impulse')
@@ -224,7 +228,8 @@ while 1
 %                     tx_crc, rx_crc, turbo_enc, turbo_dec, fading_ch, ...
 %                     chest_option, cheq_option, test_option);
             else                           % otfs
-                [pkt_error, tx_papr, ch_mse, sym_err_var, ch_est_rbs_dd] = ...
+                [pkt_error, tx_papr, ch_mse, sym_err_var, ...
+                    ch_est_rbs_dd, ch_real_eff_tf] = ...
                     otfs_dnlink_singlerun_r2( ...
                     test_option.rv_idx, nw_cc, nw_rm, nw_num, snr_db, ...
                     tx_crc_a, tx_crc_b, rx_crc_a, fading_ch, ...

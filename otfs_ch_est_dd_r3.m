@@ -69,7 +69,7 @@
 %        (1)data       :  d d d d d d d d d d d d d d d d
 %        (0)data       :  d d d d d d d d d d d d d d d d
 
-function ch_est_rbs_dd = otfs_ch_est_dd_r2(rx_sym_rbs_dd, ch_real_rbs_usr_tf, num, chest_option, test_option)
+function [ch_est_rbs_dd, ch_est_rbs_tf] = otfs_ch_est_dd_r3(rx_sym_rbs_dd, ch_real_rbs_usr_tf, noise_var, num, chest_option, test_option)
 
 % demap pilot symbols
 [~, rx_sym_pilot1_usrfrm, rx_sym_pilot2_usrfrm] = otfs_sym_demap_r3(rx_sym_rbs_dd, num, chest_option, test_option);
@@ -150,30 +150,33 @@ elseif strcmp(chest_option, 'dd_zc')        % use zadoff-chu sequence pilot
     % find channel info from rx signal
     rx_ch_info = rx_sym_pilot_imp_resp;
 elseif strcmp(chest_option, 'dd_random')    % use random sequence pilot (generate toeplitz pilot matrix -> pseudo-inverse)
-    % generate pilot column
-    pwr_pilot = num.num_delay_pilot_usr*num.num_doppler_pilot_usr/test_option.zc_seq_len;
+    % set parameters for tx pilot
+    pwr_pilot = num.num_delay_pilot_usr*num.num_doppler_pilot_usr/test_option.rand_seq_len;
     idx_delay_pilot_usr = num.num_delay_pilot_half_usr+1;
-    tx_sym_pilot_col = zeros(num.num_delay_usr, 1);
-    tx_sym_pilot_col(idx_delay_pilot_usr-ceil(test_option.zc_seq_len/2)+1: ...
-        idx_delay_pilot_usr-ceil(test_option.zc_seq_len/2)+test_option.zc_seq_len, 1) = ...
-        sqrt(pwr_pilot)*test_option.zc_seq;
+    idx_doppler_pilot_usr = num.num_doppler_pilot_half_usr+1;
     
-    % circshift pilot column
-    idx_delay_usr = floor(num.num_delay_usr/2)+1;
-    map_shift = [idx_delay_usr-idx_delay_pilot_usr, 0];
-    tx_sym_pilot_col_ctr = circshift(tx_sym_pilot_col, map_shift);
+    % generate tx pilot
+    tx_sym_pilot_dd = zeros(num.num_delay_usr, num.num_doppler_usr);
+    tx_sym_pilot_dd(idx_delay_pilot_usr-ceil(test_option.rand_seq_len/2)+1: ...
+        idx_delay_pilot_usr+floor(test_option.rand_seq_len/2), ...
+        idx_doppler_pilot_usr) = ...
+        sqrt(pwr_pilot)*test_option.rand_seq;
     
-    % generate toeplitz pilot matrix (toeplitz channel <-> toeplitz tx)
-    pilot_circ_mat = toeplitz(tx_sym_pilot_col_ctr, circshift(flipud(tx_sym_pilot_col_ctr), 1));
-    pilot_circ_mat_inv = pinv(pilot_circ_mat);
+    % circshift tx pilot
+    map_shift = [idx_delay_usr-idx_delay_pilot_usr, idx_doppler_usr-idx_doppler_pilot_usr];
+    tx_sym_pilot_ctr_dd = circshift(tx_sym_pilot_dd, map_shift);
+    
+    % gen tx pilot in tf domain
+    tx_sym_pilot_tf = sqrt(num.num_doppler_usr/num.num_delay_usr)*fft(ifft(tx_sym_pilot_ctr_dd, [], 2), [], 1);
     
     % set pilot resource center index
     idx_delay_pilot_usr = num.num_delay_pilot_half_usr-num.num_delay_guard_a_usr+1;           % pilot: even
     idx_doppler_pilot_usr = num.num_doppler_pilot_half_usr-num.num_doppler_guard_usr+1;     % pilot: even
     
     % set scaling factor
-%     scale_ch_est_rbs = sqrt((num.num_delay_usr*num.num_doppler_usr)/(num.num_delay_pilot_usr*num.num_doppler_pilot_usr));
-    scale_rx_ch_info = sqrt(num.num_delay_usr*num.num_doppler_usr);
+    scale_rx_ch_info = 1;
+%     scale_rx_ch_info = sqrt((num.num_delay_usr*num.num_doppler_usr)/(num.num_delay_pilot_usr*num.num_doppler_pilot_usr));
+%     scale_rx_ch_info = sqrt(num.num_delay_usr*num.num_doppler_usr);
     
     % find channel info from rx signal
     rx_ch_info = rx_sym_pilot1_guard_removed;
@@ -260,18 +263,33 @@ else
 end
 
 % estimate and shift channel
-if strcmp(chest_option, 'dd_random')    % use random sequence pilot (generate toeplitz pilot matrix -> pseudo-inverse)
-    % find dd-domain channel impulse response
-    ch_est_rbs_raw = pilot_circ_mat_inv*circshift(rx_ch_info_rbs_interp_guard, [0 idx_doppler_usr-1]);
+if strcmp(chest_option, 'dd_random')    % use random sequence pilot
+    % generate tf domain rx ch info
+    rx_ch_info_rbs_interp_guard_tf = sqrt(num.num_doppler_usr/num.num_delay_usr)*fft(ifft(rx_ch_info_rbs_interp_guard, [], 2), [], 1);
+    
+%     % estimate channnel with zf
+%     ch_est_rbs_raw_tf = rx_ch_info_rbs_interp_guard_tf./tx_sym_pilot_tf;
+    
+    % estimate channel with mmse
+    tx_sym_pilot_mmse_tf = conj(tx_sym_pilot_tf)./(noise_var+abs(tx_sym_pilot_tf).^2);
+    ch_est_rbs_raw_tf = rx_ch_info_rbs_interp_guard_tf.*tx_sym_pilot_mmse_tf;
+    
+    % generate dd domain rx ch info
+    ch_est_rbs_raw_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(ch_est_rbs_raw_tf, [], 1), [], 2);
 else
     % circular shift channel to edge
-    ch_est_rbs_raw = circshift(rx_ch_info_rbs_interp_guard, [-idx_delay_usr+1, -idx_doppler_usr+1]);
+    ch_est_rbs_raw_dd = circshift(rx_ch_info_rbs_interp_guard, [-idx_delay_usr+1, -idx_doppler_usr+1]);
+    ch_est_rbs_raw_tf = [];
 end
 
 % output (time domain delay edge interpolation: no use)
 if test_option.ch_tf_edge_interp
     % 2d inverse sfft for channel transformation
-    ch_est_rbs_tf = sqrt(num.num_doppler_usr/num.num_delay_usr)*fft(ifft(ch_est_rbs_raw, [], 2), [], 1);
+    if isempty(ch_est_rbs_raw_tf)
+        ch_est_rbs_tf = sqrt(num.num_doppler_usr/num.num_delay_usr)*fft(ifft(ch_est_rbs_raw_dd, [], 2), [], 1);
+    else
+        ch_est_rbs_tf = ch_est_rbs_raw_tf;
+    end
     
     % set new guard parameters
     len_ch_edge_delay_tf = 8;
@@ -286,8 +304,10 @@ if test_option.ch_tf_edge_interp
     
     % 2d sfft for channel transformation
     ch_est_rbs_dd = sqrt(num.num_delay_usr/num.num_doppler_usr)*fft(ifft(ch_est_rbs_tf_interp_edge, [], 1), [], 2);
+    ch_est_rbs_tf = ch_est_rbs_tf_interp_edge;
 else
-    ch_est_rbs_dd = ch_est_rbs_raw;
+    ch_est_rbs_dd = ch_est_rbs_raw_dd;
+    ch_est_rbs_tf = ch_est_rbs_raw_tf;
 end
 
 % % test
@@ -317,10 +337,10 @@ end
 % assignin('base', 'idx_doppler_pilot_usr', idx_doppler_pilot_usr)
 % assignin('base', 'rx_ch_info', rx_ch_info)
 % if strcmp(chest_option, 'dd_random')
-%     assignin('base', 'tx_sym_pilot_col', tx_sym_pilot_col)
-%     assignin('base', 'tx_sym_pilot_col_ctr', tx_sym_pilot_col_ctr)
-%     assignin('base', 'pilot_circ_mat', pilot_circ_mat)
-%     assignin('base', 'pilot_circ_mat_inv', pilot_circ_mat_inv)
+%     assignin('base', 'tx_sym_pilot_dd', tx_sym_pilot_dd)
+%     assignin('base', 'tx_sym_pilot_tf', tx_sym_pilot_tf)
+%     assignin('base', 'tx_sym_pilot_ctr_dd', tx_sym_pilot_ctr_dd)
+%     assignin('base', 'rx_ch_info_rbs_interp_guard_tf', rx_ch_info_rbs_interp_guard_tf)
 % elseif strncmp(chest_option, 'dd_golay_', 9)
 %     assignin('base', 'rx_sym_pilot1_despread', rx_sym_pilot1_despread)
 %     assignin('base', 'rx_sym_pilot2_despread', rx_sym_pilot2_despread)
@@ -341,14 +361,17 @@ end
 %     assignin('base', 'idx_ch_info_doppler_interp', idx_ch_info_doppler_interp)
 % end
 % assignin('base', 'rx_ch_info_rbs_interp_guard', rx_ch_info_rbs_interp_guard)
-% assignin('base', 'ch_est_rbs_raw', ch_est_rbs_raw)
+% assignin('base', 'ch_est_rbs_raw_tf', ch_est_rbs_raw_tf)
+% assignin('base', 'ch_est_rbs_raw_dd', ch_est_rbs_raw_dd)
 % if test_option.ch_tf_edge_interp
 %     assignin('base', 'ch_est_rbs_tf', ch_est_rbs_tf)
 %     assignin('base', 'ch_est_rbs_tf_interp_edge', ch_est_rbs_tf_interp_edge)
 % end
 % assignin('base', 'ch_est_rbs_dd', ch_est_rbs_dd);
 % if test_option.ch_mse
+%     ch_real_rbs_usr_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(ch_real_rbs_usr_tf, [], 1), [], 2);
 %     assignin('base', 'ch_real_rbs_usr_dd', ch_real_rbs_usr_dd)
+%     assignin('base', 'ch_real_rbs_usr_tf', ch_real_rbs_usr_tf)
 % end
 % pause
 

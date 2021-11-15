@@ -85,11 +85,14 @@ if strcmp(chest_option, 'dd_impulse')       % use impulse pilot
         pwr_data = 1;
         pwr_pilot = num.num_delay_pilot_usr*num.num_doppler_pilot_usr;
     end
-elseif strcmp(chest_option, 'dd_zc') || ...
-        strcmp(chest_option, 'dd_random')   % use pilot sequence (zc/random)
+elseif strcmp(chest_option, 'dd_zc')        % use pilot sequence (zc)
     % set power for sequence spreading
     pwr_data = 1;
     pwr_pilot = num.num_delay_pilot_usr*num.num_doppler_pilot_usr/test_option.zc_seq_len;
+elseif strcmp(chest_option, 'dd_random')    % use pilot sequence (random)
+    % set power for sequence spreading
+    pwr_data = 1;
+    pwr_pilot = num.num_delay_pilot_usr*num.num_doppler_pilot_usr/test_option.rand_seq_len;
 elseif strcmp(chest_option, 'dd_golay_serial') || ...
         strcmp(chest_option, 'dd_golay_parallel') || ...
         strcmp(chest_option, 'dd_golay_diag')
@@ -112,7 +115,7 @@ if strcmp(chest_option, 'dd_impulse')       % use impulse pilot
     tx_sym_pilot1_usrfrm = zeros(num.num_delay_pilot_usr, num.num_doppler_pilot_usr);
     tx_sym_pilot1_usrfrm(idx_delay_pilot_usr, idx_doppler_pilot_usr) = sqrt(pwr_pilot);              % boosts pilots
     tx_sym_pilot2_usrfrm = [];
-elseif strcmp(chest_option, 'dd_zc') || strcmp(chest_option, 'dd_random')   % use pilot sequence
+elseif strcmp(chest_option, 'dd_zc')        % use sequence pilot
     % check numbers
     if num.num_delay_pilot_usr < test_option.zc_seq_len+num.num_delay_guard_a_usr+num.num_delay_guard_b_usr
         fprintf('num_delay_usr = %d\n', num.num_delay_usr)
@@ -130,12 +133,31 @@ elseif strcmp(chest_option, 'dd_zc') || strcmp(chest_option, 'dd_random')   % us
         idx_doppler_pilot_usr) = ...
         sqrt(pwr_pilot)*test_option.zc_seq;
     tx_sym_pilot2_usrfrm = [];
-elseif strcmp(chest_option, 'dd_golay_serial')      % use golay sequence
+elseif strcmp(chest_option, 'dd_random')   % use random pilot
     % check numbers
-    if num.num_delay_pilot_usr < 2*test_option.golay_seq_len+4*num.num_delay_guard_usr
+    if num.num_delay_pilot_usr < test_option.rand_seq_len+num.num_delay_guard_a_usr+num.num_delay_guard_b_usr
         fprintf('num_delay_usr = %d\n', num.num_delay_usr)
         fprintf('num_delay_pilot_usr = %d\n', num.num_delay_pilot_usr)
-        fprintf('num_delay_guard_usr = %d\n', num.num_delay_guard_usr)
+        fprintf('num_delay_guard_a_usr = %d\n', num.num_delay_guard_a_usr)
+        fprintf('num_delay_guard_b_usr = %d\n', num.num_delay_guard_b_usr)
+        fprintf('test_option.zc_seq_len = %d\n', test_option.rand_seq_len)
+        error('Check numbers!')
+    end
+    
+    % map spread sequence
+    tx_sym_pilot1_usrfrm = zeros(num.num_delay_pilot_usr, num.num_doppler_pilot_usr);
+    tx_sym_pilot1_usrfrm(idx_delay_pilot_usr-ceil(test_option.rand_seq_len/2)+1: ...
+        idx_delay_pilot_usr+floor(test_option.rand_seq_len/2), ...
+        idx_doppler_pilot_usr) = ...
+        sqrt(pwr_pilot)*test_option.rand_seq;
+    tx_sym_pilot2_usrfrm = [];
+elseif strcmp(chest_option, 'dd_golay_serial')      % use complementary sequence pilot
+    % check numbers
+    if num.num_delay_pilot_usr < 2*test_option.golay_seq_len+2*num.num_delay_guard_a_usr+2*num.num_delay_guard_b_usr
+        fprintf('num_delay_usr = %d\n', num.num_delay_usr)
+        fprintf('num_delay_pilot_usr = %d\n', num.num_delay_pilot_usr)
+        fprintf('num_delay_guard_a_usr = %d\n', num.num_delay_guard_a_usr)
+        fprintf('num_delay_guard_b_usr = %d\n', num.num_delay_guard_b_usr)
         fprintf('test_option.golay_seq_len = %d\n', test_option.golay_seq_len)
         error('Check numbers!')
     end
@@ -162,12 +184,20 @@ elseif strcmp(chest_option, 'dd_golay_serial')      % use golay sequence
             idx_doppler_pilot_usr) = ...
             sqrt(pwr_pilot/2)*test_option.golay_seq_b;
     end
-elseif strcmp(chest_option, 'dd_golay_parallel')    % use golay sequence
+elseif strcmp(chest_option, 'dd_golay_parallel')    % use complementary sequence pilot
     % check numbers
     if num.num_doppler_pilot_usr < 2+3*num.num_doppler_guard_usr
         fprintf('num_doppler_usr = %d\n', num.num_doppler_usr)
         fprintf('num_doppler_pilot_usr = %d\n', num.num_doppler_pilot_usr)
         fprintf('num_doppler_guard_usr = %d\n', num.num_doppler_guard_usr)
+        error('Check numbers!')
+    end
+    if num.num_delay_pilot_usr < test_option.golay_seq_len+num.num_delay_guard_a_usr+num.num_delay_guard_b_usr
+        fprintf('num_delay_usr = %d\n', num.num_delay_usr)
+        fprintf('num_delay_pilot_usr = %d\n', num.num_delay_pilot_usr)
+        fprintf('num_delay_guard_a_usr = %d\n', num.num_delay_guard_a_usr)
+        fprintf('num_delay_guard_b_usr = %d\n', num.num_delay_guard_b_usr)
+        fprintf('test_option.zc_seq_len = %d\n', test_option.golay_seq_len)
         error('Check numbers!')
     end
     
@@ -182,16 +212,17 @@ elseif strcmp(chest_option, 'dd_golay_parallel')    % use golay sequence
         idx_delay_pilot_usr+floor(test_option.golay_seq_len/2), ...
         floor(num.num_doppler_pilot_half_usr/2)+1) = ...
         sqrt(pwr_pilot/2)*test_option.golay_seq_b;
-elseif strcmp(chest_option, 'dd_golay_diag')        % use golay sequence
+elseif strcmp(chest_option, 'dd_golay_diag')        % use complementary sequence pilot
     % check numbers
     if (num.num_doppler_pilot_usr ~= num.num_doppler_usr) || ...
             (num.num_delay_usr < 2*num.num_delay_pilot_usr) || ...
-            (num.num_delay_pilot_usr < 2*test_option.golay_seq_len+4*num.num_delay_guard_usr)
+            (num.num_delay_pilot_usr < 2*test_option.golay_seq_len+2*num.num_delay_guard_a_usr+2*num.num_delay_guard_b_usr)
         fprintf('num_delay_usr = %d\n', num.num_delay_usr)
         fprintf('num_doppler_usr = %d\n', num.num_doppler_usr)
         fprintf('num_delay_pilot_usr = %d\n', num.num_delay_pilot_usr)
         fprintf('num_doppler_pilot_usr = %d\n', num.num_doppler_pilot_usr)
-        fprintf('num_delay_guard_usr = %d\n', num.num_delay_guard_usr)
+        fprintf('num_delay_guard_a_usr = %d\n', num.num_delay_guard_a_usr)
+        fprintf('num_delay_guard_b_usr = %d\n', num.num_delay_guard_b_usr)
         fprintf('num_doppler_guard_usr = %d\n', num.num_doppler_guard_usr)
         error('Check numbers!')
     end

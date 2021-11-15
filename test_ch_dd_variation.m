@@ -2,18 +2,17 @@
 % dump 'ch_eff_usr_dd' first
 
 % check variables
-if ~exist('ch_eff_usr_dd', 'var')
+if ~exist('ch_eff_usr_dd', 'var') || ~exist('nw_num', 'var')
     error('Dump variables first!')
 end
 
 % set parameters
-nsym = 14;
+nsym = nw_num.num_ofdmsym_usr;
+nsubc = nw_num.num_subc_usr;
 
-% ch_autocorr = ch_eff_usr_dd;
-ch_autocorr = b;
+ch_autocorr = ch_real_eff_usr_dd;
 ch_conv = zeros(size(ch_autocorr));
 ch_est = zeros(size(ch_autocorr));
-nsubc = size(ch_autocorr, 1)/nsym;
 
 for i = 1:nsym
     for j = 1:nsubc

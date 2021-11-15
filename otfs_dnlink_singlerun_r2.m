@@ -21,7 +21,7 @@
 % - full-tap real channel regeneration added: 2020.09.08
 % - cell-based processing: 2021.10.06, bit-matched with lte toolbox
 
-function [pkt_error, tx_papr, ch_mse, sym_err_var, ch_est_rbs_dd] = otfs_dnlink_singlerun_r2(rv_idx, cc, rm, num, snr_db, tx_crc_a, tx_crc_b, rx_crc_a, fading_ch, chest_option, cheq_option, test_option)
+function [pkt_error, tx_papr, ch_mse, sym_err_var, ch_est_rbs_dd, ch_real_eff_tf] = otfs_dnlink_singlerun_r2(rv_idx, cc, rm, num, snr_db, tx_crc_a, tx_crc_b, rx_crc_a, fading_ch, chest_option, cheq_option, test_option)
 
 % calculate snr and noise variance
 %   - snr_db(input) is consigered to be the snr(db) for user data in delay-doppler domain
@@ -110,7 +110,7 @@ end
 % initialize
 tx_ofdmsym_faded = zeros((num.num_fft+num.num_cp)*num.num_ofdmsym, rm.N_RB, num.num_usr);
 rx_ofdmsym_serial = zeros((num.num_fft+num.num_cp)*num.num_ofdmsym, rm.N_RB, num.num_usr);
-if ~test_option.awgn && (test_option.ch_mse || strcmp(chest_option, 'real'))
+if ~test_option.awgn && (test_option.ch_mse || test_option.perfect_ce || strcmp(chest_option, 'real'))
     ch_real_mat_tf = zeros(num.num_subc_bw, num.num_subc_bw, num.num_ofdmsym, rm.N_RB, num.num_usr);
 else
     ch_real_mat_tf = [];
@@ -138,7 +138,7 @@ for idx_usr = 1:num.num_usr
         end
         
         % regenerate real channel
-        if ~test_option.awgn && (test_option.ch_mse || strcmp(chest_option, 'real'))
+        if ~test_option.awgn && (test_option.ch_mse || test_option.perfect_ce || strcmp(chest_option, 'real'))
             [~, ch_real_mat_usr_tf, ~, ~, ~] = gen_real_ch_r1(fading_ch, ch_path_gain_usr, num, [], [], false, test_option);
             ch_real_mat_tf(:, :, :, idx_usrfrm, idx_usr) = ch_real_mat_usr_tf;
         end
@@ -170,7 +170,7 @@ rx_sym_rbs_tf = zeros(num.num_subc_usr, num.num_ofdmsym_usr, rm.N_RB, num.num_us
 rx_sym_rbs_dd_eq = zeros(num.num_delay_usr, num.num_doppler_usr, rm.N_RB, num.num_usr);
 error_var = zeros(num.num_qamsym_usr, rm.N_RB, num.num_usr);
 if ~test_option.awgn && test_option.ch_mse
-    if strcmp(chest_option, 'real') || test_option.ch_mse
+    if strcmp(chest_option, 'real') || test_option.perfect_ce || test_option.ch_mse
         ch_real_eff_tf = zeros(num.num_subc_usr*num.num_ofdmsym_usr, num.num_subc_usr*num.num_ofdmsym_usr, rm.N_RB, num.num_usr);
         ch_real_eff_dd = zeros(num.num_subc_usr*num.num_ofdmsym_usr, num.num_subc_usr*num.num_ofdmsym_usr, rm.N_RB, num.num_usr);
     end
@@ -225,7 +225,7 @@ for idx_usr = 1:num.num_usr
             rx_sym_rbs_usr_eq_dd = rx_sym_rbs_usr_dd;
         else
             % demap user real channel (for real channel estimation or channel estimation error check)
-            if test_option.ch_mse || strcmp(chest_option, 'real')
+            if test_option.ch_mse || test_option.perfect_ce || strcmp(chest_option, 'real')
                 [ch_real_rbs_usr_tf, ch_real_eff_usr_tf, ch_real_eff_usr_dd] = ...
                     demap_real_ch(squeeze(ch_real_mat_tf(:, :, :, idx_usrfrm, idx_usr)), num, list_subc_usr, list_ofdmsym_usr, chest_option, cheq_option, test_option);
             else
@@ -235,7 +235,7 @@ for idx_usr = 1:num.num_usr
             end
             
             % estimate channel (for uplink: channel estimation and equalization after demapping user physical resource block)
-            if strcmp(chest_option, 'real')
+            if strcmp(chest_option, 'real') || test_option.perfect_ce
                 % initialize rx in dd domain
                 rx_sym_rbs_usr_dd = [];
                 
@@ -260,13 +260,12 @@ for idx_usr = 1:num.num_usr
                     ch_est_rbs_usr_tf = ch_real_rbs_usr_tf;
                     ch_est_rbs_usr_dd = [];
                 end
-            elseif strncmp(chest_option, 'dd_', 3)
+            elseif strncmp(chest_option, 'dd_', 3) && ~test_option.perfect_ce
                 % 2d inverse sfft for channel estimation only
                 rx_sym_rbs_usr_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(rx_sym_rbs_usr_tf, [], 1), [], 2);
                 
                 % estimate channel
-                ch_est_rbs_usr_dd = otfs_ch_est_dd_r2(rx_sym_rbs_usr_dd, ch_real_rbs_usr_tf, num, chest_option, test_option);
-                ch_est_rbs_usr_tf = [];
+                [ch_est_rbs_usr_dd, ch_est_rbs_usr_tf] = otfs_ch_est_dd_r3(rx_sym_rbs_usr_dd, ch_real_rbs_usr_tf, noise_var, num, chest_option, test_option);
             else
                 % initialize rx in dd domain
                 rx_sym_rbs_usr_dd = [];
@@ -310,6 +309,11 @@ for idx_usr = 1:num.num_usr
                     ch_est_rbs_usr_dd = sqrt(num.num_subc_usr/num.num_ofdmsym_usr)*fft(ifft(ch_est_rbs_usr_tf, [], 1), [], 2);
                 end
                 ch_est_rbs_dd(:, :, idx_usrfrm, idx_usr) = ch_est_rbs_usr_dd;
+            else
+                ch_real_eff_tf(:, :, idx_usrfrm, idx_usr) = 0;
+                ch_real_eff_dd(:, :, idx_usrfrm, idx_usr) = 0;
+                ch_est_rbs_tf(:, :, idx_usrfrm, idx_usr) = 0;
+                ch_est_rbs_dd(:, :, idx_usrfrm, idx_usr) = 0;
             end
         end
         rx_sym_rbs_dd_eq(:, :, idx_usrfrm, idx_usr) = rx_sym_rbs_usr_eq_dd;
@@ -377,7 +381,7 @@ end
 
 % test: calculate channel estimation error
 if ~test_option.awgn && test_option.ch_mse
-    if strcmp(chest_option, 'real') && test_option.fulltap_eq
+    if (strcmp(chest_option, 'real') || test_option.perfect_ce) && test_option.fulltap_eq
         ch_mse = zeros(1, num.num_usr);
     else
         % generate effective tf channel
@@ -409,7 +413,7 @@ if ~test_option.awgn && test_option.ch_mse
 %                 assignin('base', 'ch_real_eff_dd', ch_real_eff_dd)
 %                 assignin('base', 'ch_real_eff_tf', ch_real_eff_tf)
 %                 pause
-                ch_mse_usrfrm(1, idx_usrfrm, idx_usr) = mean(abs(sum(inv_ch_est_eff_dd*ch_real_eff_dd-eye(num.num_subc_usr*num.num_ofdmsym_usr))).^2, 'all');
+                ch_mse_usrfrm(1, idx_usrfrm, idx_usr) = mean(abs(sum(inv_ch_est_eff_dd*ch_real_eff_dd(:, :, idx_usrfrm, idx_usr)-eye(num.num_subc_usr*num.num_ofdmsym_usr))).^2, 'all');
             end
         end
         ch_mse = mean(ch_mse_usrfrm, [1 2]);

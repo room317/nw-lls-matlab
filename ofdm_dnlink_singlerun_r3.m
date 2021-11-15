@@ -87,7 +87,7 @@ end
 % initialize
 tx_ofdmsym_faded = zeros((num.num_fft+num.num_cp)*num.num_ofdmsym, rm.N_RB, num.num_usr);
 rx_ofdmsym_serial = zeros((num.num_fft+num.num_cp)*num.num_ofdmsym, rm.N_RB, num.num_usr);
-if ~test_option.awgn && (test_option.ch_mse || strcmp(chest_option, 'real'))
+if ~test_option.awgn && (test_option.ch_mse || test_option.perfect_ce || strcmp(chest_option, 'real'))
     ch_real_mat_tf = zeros(num.num_subc_bw, num.num_subc_bw, num.num_ofdmsym, rm.N_RB, num.num_usr);
 else
     ch_real_mat_tf = [];
@@ -115,7 +115,7 @@ for idx_usr = 1:num.num_usr
         end
         
         % regenerate real channel
-        if ~test_option.awgn && (test_option.ch_mse || strcmp(chest_option, 'real'))
+        if ~test_option.awgn && (test_option.ch_mse || test_option.perfect_ce || strcmp(chest_option, 'real'))
             [~, ch_real_mat_usr_tf, ~, ~, ~] = gen_real_ch_r1(fading_ch, ch_path_gain_usr, num, [], [], false, test_option);
             ch_real_mat_tf(:, :, :, idx_usrfrm, idx_usr) = ch_real_mat_usr_tf;
         end
@@ -147,7 +147,7 @@ rx_sym_rbs = zeros(num.num_subc_usr, num.num_ofdmsym_usr, rm.N_RB, num.num_usr);
 rx_sym_rbs_eq = zeros(num.num_subc_usr, num.num_ofdmsym_usr, rm.N_RB, num.num_usr);
 error_var = zeros(num.num_qamsym_usr, rm.N_RB, num.num_usr);
 if ~test_option.awgn && test_option.ch_mse
-    if strcmp(chest_option, 'real')
+    if strcmp(chest_option, 'real') || test_option.perfect_ce || test_option.ch_mse
         ch_real_eff_tf = zeros(num.num_subc_usr*num.num_ofdmsym_usr, num.num_subc_usr*num.num_ofdmsym_usr, rm.N_RB, num.num_usr);
     end
     ch_est_rbs = zeros(num.num_subc_usr, num.num_ofdmsym_usr, rm.N_RB, num.num_usr);
@@ -188,7 +188,7 @@ for idx_usr = 1:num.num_usr
             rx_sym_rbs_usr_eq = rx_sym_rbs_usr;
         else
             % demap user real channel (for real channel estimation or channel estimation error check)
-            if test_option.ch_mse || strcmp(chest_option, 'real')
+            if test_option.ch_mse || test_option.perfect_ce || strcmp(chest_option, 'real')
                 [ch_real_rbs_usr_tf, ch_real_eff_usr_tf, ~] = ...
                     demap_real_ch(squeeze(ch_real_mat_tf(:, :, :, idx_usrfrm, idx_usr)), num, list_subc_usr, list_ofdmsym_usr, chest_option, cheq_option, test_option);
                 
@@ -202,7 +202,7 @@ for idx_usr = 1:num.num_usr
             end
             
             % estimate channel (for uplink: channel estimation and equalization after demapping user physical resource block)
-            if strcmp(chest_option, 'real')
+            if strcmp(chest_option, 'real') || test_option.perfect_ce
                 ch_est_rbs_usr = ch_real_rbs_usr_tf;
             else
                 ch_est_rbs_usr = ofdm_ch_est_r1(squeeze(tx_sym_rbs(:, :, idx_usrfrm, idx_usr)), rx_sym_rbs_usr, squeeze(tx_ofdmsym_faded(:, idx_usrfrm, idx_usr)), list_subc_usr, list_ofdmsym_usr, num, chest_option);
@@ -265,7 +265,7 @@ end
 
 % test: calculate channel estimation error
 if ~test_option.awgn && test_option.ch_mse
-    if strcmp(chest_option, 'real') && test_option.fulltap_eq
+    if (strcmp(chest_option, 'real') || test_option.perfect_ce) && test_option.fulltap_eq
         ch_mse = zeros(1, num.num_usr);
     else
         % generate effective tf channel

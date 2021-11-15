@@ -15,7 +15,7 @@
 function [rx_sym_rbs_eq_dd, noise_var_mat_dd] = otfs_ch_eq_dd_r4(rx_sym_rbs_dd, ch_est_rbs_tf, ch_est_rbs_dd, ch_real_eff_dd, num, noise_var, chest_option, cheq_option, test_option)
 
 % generate effective channel
-if strcmp(chest_option, 'real') && test_option.fulltap_eq
+if (strcmp(chest_option, 'real') || test_option.perfect_ce) && test_option.fulltap_eq
     % get real effective channel
     ch_eff_dd = ch_real_eff_dd;
 else

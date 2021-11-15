@@ -25,7 +25,7 @@ isfft_mtx = num.isfft_mtx;
 ch_mat_usr_tf = ch_fulltap_tf(list_subc_usr, list_subc_usr, list_ofdmsym_usr);
 
 % generate real full-tap time-frequency channel matrix
-if (strcmp(chest_option, 'real') && test_option.fulltap_eq) || test_option.ch_mse
+if ((strcmp(chest_option, 'real') || test_option.perfect_ce) && test_option.fulltap_eq) || test_option.ch_mse
     % generate effective time-frequency channel matrix
     ch_eff_usr_tf = zeros(nsubc_usr*nsym_usr);
     for idx_sym = 1:nsym_usr
@@ -37,7 +37,7 @@ end
 
 % generate real full-tap delay-doppler channel matrix
 % if (strcmp(chest_option, 'real') && test_option.fulltap_eq && strncmp(cheq_option, 'ddeq_', 5)) || test_option.ch_mse
-if (strcmp(chest_option, 'real') && test_option.fulltap_eq) || test_option.ch_mse
+if ((strcmp(chest_option, 'real') || test_option.perfect_ce) && test_option.fulltap_eq) || test_option.ch_mse
     % generate effective delay-doppler channel matrix
     % ch_eff_dd = sfft_mtx*ch_eff_tf/sfft_mtx;
     ch_eff_usr_dd = sfft_mtx*ch_eff_usr_tf*isfft_mtx;
@@ -47,7 +47,7 @@ end
 
 % generate real one-tap time-frequency channel
 % if (strcmp(chest_option, 'real') && ~test_option.fulltap_eq) || test_option.ch_mse
-if strcmp(chest_option, 'real') || test_option.ch_mse
+if (strcmp(chest_option, 'real') || test_option.perfect_ce) || test_option.ch_mse
     % extract diagonal elements of real channel
     ch_onetap_usr_tf = zeros(nsubc_usr, nsym_usr);
     for idx_sym = 1:nsym_usr

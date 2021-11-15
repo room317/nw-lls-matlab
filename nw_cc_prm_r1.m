@@ -128,6 +128,7 @@ for r = 1:C
 end
 
 % output
+nw_cc.tc_prm = tc_prm;              % turbo code table
 nw_cc.tc_trellis = tc_trellis;      % turbo code trellis structure
 nw_cc.gCRC24A = gCRC24A;            % cyclic generator polynomial (gCRC24A)
 nw_cc.gCRC24B = gCRC24B;            % cyclic generator polynomial (gCRC24B)

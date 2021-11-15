@@ -17,7 +17,7 @@ function [rx_sym_rbs_eq_tf, noise_var_mat_dd] = otfs_ch_eq_tf_r4(rx_sym_rbs_tf, 
 
 % equalize channel
 if strcmp(cheq_option, 'tfeq_zf')
-    if strcmp(chest_option, 'real') && test_option.fulltap_eq
+    if (strcmp(chest_option, 'real') || test_option.perfect_ce) && test_option.fulltap_eq
         % equalize channel (full-tap zf)
         rx_sym_rbs_eq_vec_tf = ch_real_eff_tf\rx_sym_rbs_tf(:);
         rx_sym_rbs_eq_tf = reshape(rx_sym_rbs_eq_vec_tf, num.num_subc_usr, num.num_ofdmsym_usr);
@@ -54,7 +54,7 @@ if strcmp(cheq_option, 'tfeq_zf')
 %         noise_var_mat_dd = noise_var*sum(abs(ch_inv_dd).^2, 2);
     end
 elseif strcmp(cheq_option, 'tfeq_mmse')
-    if strcmp(chest_option, 'real') && test_option.fulltap_eq
+    if (strcmp(chest_option, 'real') || test_option.perfect_ce) && test_option.fulltap_eq
         % calculate full-tap mmse channel
         ch_eff_mmse_tf = ch_real_eff_tf'/(ch_real_eff_tf*ch_real_eff_tf'+noise_var*eye(num.num_subc_usr*num.num_ofdmsym_usr));
         
@@ -89,7 +89,7 @@ else
 end
 
 % calculate noise variance (common for both)
-if strcmp(chest_option, 'real') && test_option.fulltap_eq
+if (strcmp(chest_option, 'real') || test_option.perfect_ce) && test_option.fulltap_eq
 %     noise_var_mat_dd = noise_var*reshape(abs(sum(ch_eff_dd, 2)).^2, num.num_subc_usr, []);
     noise_var_mat_dd = noise_var*reshape(sum(abs(inv(ch_real_eff_dd)).^2, 2), num.num_subc_usr, []);
 else
