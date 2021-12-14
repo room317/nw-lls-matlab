@@ -93,7 +93,8 @@ if (strcmp(chest_option, 'real') || test_option.perfect_ce) && test_option.fullt
 %     noise_var_mat_dd = noise_var*reshape(abs(sum(ch_eff_dd, 2)).^2, num.num_subc_usr, []);
     noise_var_mat_dd = noise_var*reshape(sum(abs(inv(ch_real_eff_dd)).^2, 2), num.num_subc_usr, []);
 else
-    noise_var_mat_dd = noise_var*sum(abs(1./ch_est_rbs_tf).^2, 'all')/(num.num_doppler_usr*num.num_delay_usr)*ones(num.num_delay_usr, num.num_doppler_usr);
+    ch_est_rbs_perturb_tf = ch_est_rbs_tf+0.001*sqrt(noise_var)*double(ch_est_rbs_tf == 0).*complex(randn(size(ch_est_rbs_tf)), randn(size(ch_est_rbs_tf)));    % to prevent inverse of zero
+    noise_var_mat_dd = noise_var*sum(abs(1./ch_est_rbs_perturb_tf).^2, 'all')/(num.num_doppler_usr*num.num_delay_usr)*ones(num.num_delay_usr, num.num_doppler_usr);
 end
 
 % assignin('base', 'rx_sym_rbs_tf', rx_sym_rbs_tf)
