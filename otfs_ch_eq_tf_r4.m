@@ -97,11 +97,6 @@ else
     noise_var_mat_dd = noise_var*sum(abs(1./ch_est_rbs_perturb_tf).^2, 'all')/(num.num_doppler_usr*num.num_delay_usr)*ones(num.num_delay_usr, num.num_doppler_usr);
 end
 
-assignin('base', 'ch_est_rbs_tf', ch_est_rbs_tf)
-assignin('base', 'ch_est_rbs_sat_tf', ch_est_rbs_perturb_tf)
-assignin('base', 'noise_var', noise_var)
-assignin('base', 'noise_var_mat_dd', noise_var_mat_dd)
-
 % assignin('base', 'rx_sym_rbs_tf', rx_sym_rbs_tf)
 % assignin('base', 'ch_real_eff_dd', ch_real_eff_dd)
 % assignin('base', 'ch_real_eff_tf', ch_real_eff_tf)
