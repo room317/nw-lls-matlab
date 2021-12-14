@@ -1,6 +1,7 @@
 function u = rx_ratematch_r2(Zo, rm)
 
-num_cb = size(Zo, 2);       % number of code block
+% set the number of input code block
+num_cb = size(Zo, 2);    % support multi-channel
 
 % average
 len_unpunc_tbl = size(rm.punc_tbl(~rm.punc_tbl(:, 1)), 1);
@@ -19,7 +20,7 @@ end
 
 % bit collection and selection
 Ncb = rm.Kw;
-k0 = rm.nR * 2;
+k0 = rm.nR*2;
 
 Yo = zeros(Ncb, num_cb);
 punc_tbl_circ = circshift(rm.punc_tbl, -k0);
@@ -46,5 +47,22 @@ x2 = y2_intlvr(rm.nDummy+1:end, :, :);
 x3 = y3_intlvr(rm.nDummy+1:end, :, :);
 
 u = squeeze(reshape(permute([x1 x2 x3], [2 1 3]), [], 1, num_cb));
+
+% % dump
+% assignin('base', 'r_Zo', Zo)
+% assignin('base', 'r_Zo_tail', Zo_tail)
+% assignin('base', 'r_Zo_reshape', Zo_reshape)
+% assignin('base', 'r_Zo_sum', Zo_sum)
+% assignin('base', 'r_Zo_avg', Zo_avg)
+% assignin('base', 'r_Yo', Yo)
+% assignin('base', 'r_Yo_circ', Yo_circ)
+% assignin('base', 'r_y1', y1)
+% assignin('base', 'r_y2', y2)
+% assignin('base', 'r_y3', y3)
+% assignin('base', 'r_y23', y23)
+% assignin('base', 'r_x1', x1)
+% assignin('base', 'r_x2', x2)
+% assignin('base', 'r_x3', x3)
+% assignin('base', 'r_u', u)
 
 end

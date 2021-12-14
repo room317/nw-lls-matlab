@@ -40,12 +40,17 @@ prm_mcs_idx = find(contains(prm_set, 'MCS'), 1);
 prm_tblen_idx = find(contains(prm_set, 'LEN'), 1);
 prm_nsim_idx = find(contains(prm_set, 'SIM'), 1);
 prm_snr_idx = find(contains(prm_set, 'SNR'), 1);
-prm_chreal_idx = find(contains(prm_set, 'REAL'), 1);
-prm_chperfect_idx = find(contains(prm_set, 'PERFECT'), 1);
-prm_chddtone_idx = find(contains(prm_set, 'DDTONE'), 1);
-prm_chtfltedown_idx = find(contains(prm_set, 'TFLTEDOWN'), 1);
-prm_chtflteup_idx = find(contains(prm_set, 'TFLTEUP'), 1);
-prm_chtfnr_idx = find(contains(prm_set, 'TFNR'), 1);
+prm_chereal_idx = find(contains(prm_set, 'REAL'), 1);
+prm_cheperfect_idx = find(contains(prm_set, 'PERFECT'), 1);
+prm_cheddimpulse_idx = find(contains(prm_set, 'DDIMPULSE'), 1);
+prm_cheddzc_idx = find(contains(prm_set, 'DDZC'), 1);
+prm_cheddrandom_idx = find(contains(prm_set, 'DDRANDOM'), 1);
+prm_cheddgolayserial_idx = find(contains(prm_set, 'DDGOLAYSER'), 1);
+prm_cheddgolayparallel_idx = find(contains(prm_set, 'DDGOLAYPAR'), 1);
+prm_cheddgolaydiag_idx = find(contains(prm_set, 'DDGOLAYDIAG'), 1);
+prm_chetfltedown_idx = find(contains(prm_set, 'TFLTEDOWN'), 1);
+prm_chetflteup_idx = find(contains(prm_set, 'TFLTEUP'), 1);
+prm_chetfnr_idx = find(contains(prm_set, 'TFNR'), 1);
 prm_tfeqzf_idx = find(contains(prm_set, 'TFEQZF'), 1);
 prm_tfeqmmse_idx = find(contains(prm_set, 'TFEQMMSE'), 1);
 prm_ddeqzf_idx = find(contains(prm_set, 'DDEQZF'), 1);
@@ -211,23 +216,38 @@ end
 
 % channel estimation
 chest_set = [ ...
-    ~isempty(prm_chreal_idx)
-    ~isempty(prm_chperfect_idx)
-    ~isempty(prm_chddtone_idx)
-    ~isempty(prm_chtfltedown_idx)
-    ~isempty(prm_chtflteup_idx)
-    ~isempty(prm_chtfnr_idx)];
+    ~isempty(prm_chereal_idx)
+    ~isempty(prm_cheperfect_idx)
+    ~isempty(prm_cheddimpulse_idx)
+    ~isempty(prm_cheddzc_idx)
+    ~isempty(prm_cheddrandom_idx)
+    ~isempty(prm_cheddgolayserial_idx)
+    ~isempty(prm_cheddgolayparallel_idx)
+    ~isempty(prm_cheddgolaydiag_idx)
+    ~isempty(prm_chetfltedown_idx)
+    ~isempty(prm_chetflteup_idx)
+    ~isempty(prm_chetfnr_idx)];
 if sum(double(chest_set)) ~= 1
-    error('Channel estimation setting: choose one of these: REAL, PERFECT, DDTONE, TFLTEDOWN, TFLTEUP, TFNR.')
-elseif ~isempty(prm_chreal_idx)
+    error('Channel estimation setting: choose one of these: REAL, PERFECT, DDIMPULSE, DDZC, DDRANDOM, DDGOLAYSER, DDGOLAYPAR, DDGOLAYDIAG, TFLTEDOWN, TFLTEUP, TFNR.')
+elseif ~isempty(prm_chereal_idx)
     prm_chest = 'real';             % channel from the fading block (interference exists)
-elseif ~isempty(prm_chperfect_idx)
+elseif ~isempty(prm_cheperfect_idx)
     prm_chest = 'perfect';          % channel from the whole received signals (interferece cancelled)
-elseif ~isempty(prm_chddtone_idx)
-    prm_chest = 'dd_tone';    % channel from dd-domain singletone
-elseif ~isempty(prm_chtfltedown_idx)
+elseif ~isempty(prm_cheddimpulse_idx)
+    prm_chest = 'dd_impulse';           % channel from dd-domain singletone
+elseif ~isempty(prm_cheddzc_idx)
+    prm_chest = 'dd_zc';                % channel from dd-domain zadoff-chu sequence
+elseif ~isempty(prm_cheddrandom_idx)
+    prm_chest = 'dd_random';            % channel from dd-domain random(default: zadoff-chu) sequence
+elseif ~isempty(prm_cheddgolayserial_idx)
+    prm_chest = 'dd_golay_serial';      % channel from dd-domain golay complementary sequence (in serial layout)
+elseif ~isempty(prm_cheddgolayparallel_idx)
+    prm_chest = 'dd_golay_parallel';    % channel from dd-domain golay complementary sequence (in parallel layout)
+elseif ~isempty(prm_cheddgolaydiag_idx)
+    prm_chest = 'dd_golay_diag';        % channel from dd-domain golay complementary sequence (in diagonal layout)
+elseif ~isempty(prm_chetfltedown_idx)
     prm_chest = 'tf_ltedown';       % channel from tf-domain lte downlink pilots
-elseif ~isempty(prm_chtflteup_idx)
+elseif ~isempty(prm_chetflteup_idx)
     prm_chest = 'tf_lteup';         % channel from tf-domain lte uplink pilots
 else
     prm_chest = 'tf_nr';            % channel from tf-domain nr downlink pilots
@@ -264,7 +284,7 @@ else
 end
 
 % check errors
-if strcmp(prm_wave, 'ofdm') && strcmp(prm_chest, 'dd_pilot')
+if strcmp(prm_wave, 'ofdm') && strncmp(prm_chest, 'dd_', 3)
     error('OFDM cannot use dd-domain pilots.')
 end
 

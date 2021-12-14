@@ -10,12 +10,8 @@
 % - rate matching added: 2019.10.22
 % - structure updated: 2019.10.23
 
-% set test mode
-test_dd_pilot = false;  % allocate whole resource block to pilot
-test_real_ch = false;   % real channel with ici into consideration
-
 % set parameters
-SNRCnt = 10;
+SNRCnt = 5;
 SNRStep = 2;
 ErrorStop = 400;
 ErrorBreak = 0.001;
@@ -57,30 +53,76 @@ while 1
     waveform = nw_parse_prm.wave;
     usr_option = nw_parse_prm.usr;
     
-    % set equalization option
-    nw_num = nw_num_prm_r1(scs_khz, bw_mhz, num_slot, waveform, chest_option, usr_option);
-    nw_cc = nw_cc_prm(len_tb_bit);
-    nw_rm = nw_rm_prm(len_tb_bit, mcs, nw_num, nw_cc);
-    nw_sim = nw_sim_prm(len_tb_bit, num_sim, nw_num, nw_cc, nw_rm);
+    % check parameters
+    if ~(len_tb_bit > 0)
+        error('Check TB length should be greater than 0.')
+    end
+    
+    % set test simulation option
+    sim_option.override = false;    % override simulation options when true
+    sim_option.num_rb = 29;         % number of total rbs
+    sim_option.scs_khz = 120;       % subcarrier spacing (khz)
+    sim_option.num_slot = 2;        % number of total slots
+    sim_option.Qm = 4;              % number of bits per qam symbol
+    sim_option.coderate = 666;      % number of information bits per 1024 bits
     
     % set test option
-    test_option.papr = true;               % papr test
-    test_option.ch_mse = true;             % channel mmse test
-    test_option.sym_err_var = true;        % symbol error variance test
-    test_option.ch_edge_interp = false;     % tf-channel edge interpolation test (no use)
-    test_option.partial_reception = nw_num.num_ofdmsym;   % partial reception test for latency enhancement (number of symbols received)
-    test_option.otfs_map_plan = 3;          % pilot resource mapping test (refer to 'otfs_sym_map_r2.m')
-    test_option.otfs_pilot_impulse_pwr_reduction = false;       % valid only when impulse pilot is used
-    test_option.otfs_pilot_spread_seq = zadoffChuSeq(1,37);     % pilot spread seq. (zadoff-chu sequence spreading)
-    test_option.otfs_pilot_seq_ones = zadoffChuSeq(1,37); % ones(37, 1);              % pilot spread seq. (all ones)
-    test_option.fulltap_eq = true;          % use full-tap real channel for equalization
-    test_option.common_usr_ch = true;          % use full-tap real channel for equalization
+    test_option.license = true;                     % true: with toolbox license, false: no toolbox license
+    test_option.fading_only = false;                % no awgn noise when true
+    test_option.awgn = false;                       % no fading when true
+    test_option.papr = false;                       % papr test
+    test_option.ch_mse = 'none';                     % channel mmse test ('none', 'fulltap', 'onetap')
+    test_option.sym_err_var = false;                % symbol error variance test
+    test_option.ch_tf_edge_interp = false;          % tf-channel edge interpolation test (no use)
+    test_option.ch_dd_guard_interp = false;         % guard interpolation for channel estimation
+    test_option.ch_est_xcorr_prune = false;         % channel estimation pilot resource pruning after sequence pilot xcorr
+    test_option.otfs_pilot_pwr_set = false;         % valid only when otfs_pilot_plan is 'impulse'
+    test_option.zc_seq_len = 37;                                    % zadoff-chu sequence length (37)
+    test_option.zc_seq = zadoffChuSeq(1, test_option.zc_seq_len);   % zadoff-chu sequence
+    test_option.golay_seq_len = 32;                                 % golay sequence length (32, 64, 128)
+    if test_option.license
+        [Ga, Gb] = wlanGolaySequence(test_option.golay_seq_len);    % complementary golay sequence
+    else
+        Ga = [];    % license problem
+        Gb = [];    % license problem
+    end
+    test_option.golay_seq_a = Ga;           % complementary golay sequence
+    test_option.golay_seq_b = Gb;           % complementary golay sequence
+    test_option.rand_seq_len = 2;                                                                     % random sequence length
+%     rand_seq = complex(randn(test_option.rand_seq_len, 1), randn(test_option.rand_seq_len, 1));     % random sequence
+%     rand_seq = exp(-1i*2*pi*randi(1024, test_option.rand_seq_len, 1)/1024);                         % random equi-power sequence
+    rand_seq = ones(test_option.rand_seq_len, 1);                                                     % ones
+    test_option.rand_seq = rand_seq/sqrt(mean(abs(rand_seq).^2, 'all'));                                % random sequence
+    test_option.fulltap_eq = false;         % use full-tap real channel for equalization
+    test_option.common_usr_ch = true;       % use common channel per user
+    test_option.gpu_flag = false;           % use gpu for real channel generation
+    test_option.pilot_only = false;         % use null data
+    test_option.ch_clip = 'none';           % clipping real channel ('none': no clipping, 'center': channel for symbol at center, 'random': channel for random symbol)
 %     test_option.otfs_pilot_spread_seq = exp(-1i*pi*25*(0:36).*(1:37)/37);
+    test_option.rm_version = 2;             % 1: exactly follows standard, 2: faster vectorized version
+    test_option.rv_idx = 0;                 % redundancy version numer
+    test_option.max_tbs_calc = false;       % skip sfft calc. when max tbs calc.
+    test_option.custom_nr_pilot = 'normal';    % ('normal': pilots, '50%': 50% pilots, '18%': 18% pilots)
+    test_option.qam_modem_toolbox = false;  % true to use lte toolbox qam mod/demod
+    test_option.perfect_ce = false;         % perfect channel estimation (forced)
     
     % check test option
-    if test_option.otfs_pilot_impulse_pwr_reduction && ~(test_option.otfs_map_plan == 1 || test_option.otfs_map_plan == 2 || test_option.otfs_map_plan == 3)
-        error('To use ''otfs_pilot_impulse_pwr_reduction'', ''otfs_map_plan'' must be one of these: {1, 2, 3}')
+    if test_option.otfs_pilot_pwr_set && ~strcmp(chest_option, 'dd_impulse')
+        error('To use ''otfs_pilot_pwr_set'', ''chest_option'' must be ''dd_impulse''.')
     end
+    
+    if ~test_option.license && strncmp(chest_option, 'dd_golay_', 9)
+        error('To use ''DDGOLAY..'' option, ''test_option.license'' option must be true.')
+    end
+    
+    % set equalization option
+    nw_cc = nw_cc_prm_r1(len_tb_bit);
+    nw_num = nw_num_prm_r1(carrier_freq_mhz, scs_khz, bw_mhz, num_slot, waveform, chest_option, usr_option, sim_option, test_option);
+    nw_rm = nw_rm_prm_r1(mcs, nw_cc, nw_num, sim_option, test_option);
+    nw_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, delay_spread_rms_us);
+    
+    % set additional test option
+    test_option.part_rx = nw_num.num_ofdmsym;       % partial reception test for latency enhancement (number of symbols received)
     
 %     % generate walsh-hadamard sequence
 %     walsh_seq = 1;
@@ -90,28 +132,119 @@ while 1
 %     end
 %     test_option.walsh_seq = walsh_seq;
     
+    % create crc generator and detector objects
+    tx_crc_a = comm.CRCGenerator(nw_cc.gCRC24A);
+    tx_crc_b = comm.CRCGenerator(nw_cc.gCRC24B);
+    rx_crc_a = comm.CRCDetector(nw_cc.gCRC24A);
+%     rx_crc_b = comm.CRCDetector(nw_cc.gCRC24B);
+    
+    % create a rayleigh fading channel object
+    if nw_ch.los
+        if test_option.license
+            fading_ch = nrTDLChannel( ...
+                'DelayProfile', 'TDL-E', ...
+                'DelaySpread', delay_spread_rms_us*1e-6, ...
+                'MaximumDopplerShift', nw_ch.maximum_doppler_shift, ...
+                'NumTransmitAntennas', 1, ...
+                'NumReceiveAntennas', 1, ...
+                'SampleRate', nw_num.sample_rate, ...
+                'NormalizePathGains', true);
+%                 'KFactorScaling', true, ...
+%                 'KFactor', 10*log10(nw_ch.k_factor),...
+        else
+            fading_ch = comm.RicianChannel(...
+                'SampleRate', num.sample_rate,...
+                'PathDelays', ch.path_delays,...
+                'AveragePathGains', ch.average_path_gains,...
+                'KFactor', ch.k_factor,...
+                'DirectPathDopplerShift', ch.maximum_doppler_shift,...
+                'MaximumDopplerShift', ch.maximum_doppler_shift,...
+                'DopplerSpectrum', ch.doppler_spectrum,...
+                'PathGainsOutputPort', true, ...
+                'NormalizePathGains', true);
+        end
+    else
+        if test_option.license
+            fading_ch = nrTDLChannel( ...
+                'DelayProfile', 'TDL-C', ...
+                'DelaySpread', delay_spread_rms_us*1e-6, ...
+                'MaximumDopplerShift', nw_ch.maximum_doppler_shift, ...
+                'NumTransmitAntennas', 1, ...
+                'NumReceiveAntennas', 1, ...
+                'SampleRate', nw_num.sample_rate, ...
+                'NormalizePathGains', true);
+
+%             fading_ch = nrTDLChannel( ...
+%                 'DelayProfile', 'Custom', ...
+%                 'AveragePathGains', nw_ch.average_path_gains,...
+%                 'PathDelays', nw_ch.path_delays, ...
+%                 'MaximumDopplerShift', nw_ch.maximum_doppler_shift, ...
+%                 'NumTransmitAntennas', 1, ...
+%                 'NumReceiveAntennas', 1, ...
+%                 'SampleRate', nw_num.sample_rate, ...
+%                 'NormalizePathGains', true);
+        else
+            fading_ch = comm.RayleighChannel(...
+                'SampleRate', nw_num.sample_rate, ...
+                'PathDelays', nw_ch.path_delays, ...
+                'AveragePathGains', nw_ch.average_path_gains, ...
+                'NormalizePathGains', true, ...
+                'MaximumDopplerShift', nw_ch.maximum_doppler_shift, ...
+                'DopplerSpectrum', nw_ch.doppler_spectrum, ...
+                'PathGainsOutputPort', true);
+        end
+    end
+    
     tic
     fprintf('RUNNING CASE: %s', file_read);
     
     nw_sim_result = zeros(SNRCnt, nw_num.num_usr+2);
     for snr_idx = 1:SNRCnt
         snr_db = snr_db_start+SNRStep*(snr_idx-1);
-        nw_ch = nw_ch_prm(carrier_freq_mhz, velocity_kmh, idx_fading, delay_spread_rms_us);
+        esn0_db = snr_db-(10*log10((nw_num.num_cp+nw_num.num_fft)/nw_num.num_fft));
         
         % initialize counter
         total_error = zeros(1, nw_num.num_usr);
         sim_cnt = 0;
         sum_papr = 0;
-        sum_ch_mse = zeros(1, nw_num.num_usr);
         sum_sym_err_var = zeros(1, nw_num.num_usr);
+        
+        sum_ch_mse = zeros(nw_num.num_subc_usr*nw_num.num_ofdmsym_usr, nw_num.num_subc_usr*nw_num.num_ofdmsym_usr, nw_rm.N_RB, nw_num.num_usr);
+        sum_ch_mse_tf = zeros(nw_num.num_subc_usr, nw_num.num_ofdmsym_usr, nw_rm.N_RB, nw_num.num_usr);
+        sum_ch_mse_dd = zeros(nw_num.num_subc_usr, nw_num.num_ofdmsym_usr, nw_rm.N_RB, nw_num.num_usr);
         
         for sim_idx = 1:num_sim
             
             % simulate single packet
             if strcmp(waveform, 'ofdm')    % ofdm
-                [pkt_error, tx_papr, ch_mse, sym_err_var] = ofdm_dnlink_singlerun_r0(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option, cheq_option, test_option);
+                [pkt_error, tx_papr, ch_est_err, sym_err_var, ...
+                    ch_est_rbs, ch_real_eff] = ...
+                    ofdm_dnlink_singlerun_r3( ...
+                    nw_cc, nw_rm, nw_num, esn0_db, ...
+                    tx_crc_a, tx_crc_b, rx_crc_a, fading_ch, ...
+                    chest_option, cheq_option, test_option);
+%                 [pkt_error, tx_papr, ch_mse, sym_err_var] = ...
+%                     ofdm_dnlink_singlerun_r2( ...
+%                     nw_sim, nw_cc, nw_rm, nw_num, snr_db, ...
+%                     tx_crc, rx_crc, turbo_enc, turbo_dec, fading_ch, ...
+%                     chest_option, cheq_option, test_option);
+%                 [pkt_error, tx_papr, ch_mse, sym_err_var] = ...
+%                     test_ofdm_otfs_r0( ...
+%                     nw_sim, nw_cc, nw_rm, nw_num, snr_db, ...
+%                     tx_crc, rx_crc, turbo_enc, turbo_dec, fading_ch, ...
+%                     chest_option, cheq_option, test_option);
             else                           % otfs
-                [pkt_error, tx_papr, ch_mse, sym_err_var] = otfs_dnlink_singlerun_r0(nw_sim, nw_cc, nw_rm, nw_num, snr_db, nw_ch, chest_option, cheq_option, test_option);
+                [pkt_error, tx_papr, ch_est_err, sym_err_var, ...
+                    ch_est_rbs, ch_real_eff] = ...
+                    otfs_dnlink_singlerun_r2( ...
+                    nw_cc, nw_rm, nw_num, esn0_db, ...
+                    tx_crc_a, tx_crc_b, rx_crc_a, fading_ch, ...
+                    chest_option, cheq_option, test_option);
+%                 [pkt_error, tx_papr, ch_mse, sym_err_var, ch_est_rbs_dd] = ...
+%                     otfs_dnlink_singlerun_r1( ...
+%                     nw_sim, nw_cc, nw_rm, nw_num, snr_db, ...
+%                     tx_crc, rx_crc, turbo_enc, turbo_dec, fading_ch, ...
+%                     chest_option, cheq_option, test_option);
             end
             
             % count packet error
@@ -126,12 +259,24 @@ while 1
                 sum_papr = sum_papr+tx_papr;
             end
             
-            % sum channel mse
-            if test_option.ch_mse
-                sum_ch_mse = sum_ch_mse+ch_mse;
+            % sum channel mse (tmp)
+            if ~strcmp(test_option.ch_mse, 'none')
+                if strcmp(test_option.ch_mse, 'onetap')
+                    if strcmp(waveform, 'otfs')
+                        sum_ch_mse_dd = sum_ch_mse_dd+abs(ch_est_err).^2;
+                        ch_est_err_tf = sqrt(nw_num.num_doppler_usr/nw_num.num_delay_usr)*fft(ifft(ch_est_err, [], 2), [], 1);
+                        sum_ch_mse_tf = sum_ch_mse_tf+abs(ch_est_err_tf).^2;
+                    else
+                        sum_ch_mse_tf = sum_ch_mse_tf+abs(ch_est_err).^2;
+                        ch_est_err_dd = sqrt(nw_num.num_subc_usr/nw_num.num_ofdmsym_usr)*fft(ifft(ch_est_err, [], 1), [], 2);
+                        sum_ch_mse_dd = sum_ch_mse_dd+abs(ch_est_err_dd).^2;
+                    end
+                else
+                    sum_ch_mse = sum_ch_mse+abs(ch_est_err).^2;
+                end
             end
             
-            % sum channel mse
+            % sum symbol errors
             if test_option.sym_err_var
                 sum_sym_err_var = sum_sym_err_var+sym_err_var;
             end
@@ -156,8 +301,8 @@ while 1
             fprintf(fp2, ' %10.6f', papr_db);
         end
         
-        if test_option.ch_mse
-            ch_rmse = sqrt(sum_ch_mse/sim_cnt);           % calculate channel mmse
+        if ~strcmp(test_option.ch_mse, 'none')
+            ch_rmse = sqrt(mean(sum_ch_mse, 'all')/sim_cnt);           % calculate channel mmse
             fprintf('   CH RMSE:')
             fprintf(' %6.3f', ch_rmse)
             fprintf(fp2, ' %10.6f', ch_rmse);
@@ -175,7 +320,10 @@ while 1
         fprintf(fp2, '\n');
         
         % set stopping criteria
-        if (max(nw_sim_result(snr_idx, 3:end)) < ErrorBreak) && ~(test_option.papr || test_option.ch_mse || test_option.sym_err_var)
+        if (max(nw_sim_result(snr_idx, 3:end)) < ErrorBreak) && ...
+                strcmp(test_option.ch_mse, 'none') && ...
+                ~test_option.papr && ...
+                ~test_option.sym_err_var
             disp('BREAK');
             break;
         end
@@ -186,10 +334,28 @@ while 1
     for idx_usr = 1:nw_num.num_usr
         figure
         semilogy(nw_sim_result(:, 1), nw_sim_result(:, 2+idx_usr), '-bo')
-        xlabel('SNR (dB)'); ylabel('PER');
-        title('QAM over Fading Channel');
+        xlabel('SNR (dB)'), ylabel('PER'), title('QAM over Fading Channel')
         axis([nw_sim_result(1, 1) - 1 snr_db + 1 1e-4 1])
         grid minor
+    end
+    
+    if ~strcmp(test_option.ch_mse, 'none')
+        if strcmp(test_option.ch_mse, 'onetap')
+            for idx_usr = 1:nw_num.num_usr
+                figure
+                mesh(1:size(sum_ch_mse_tf, 2), 1:size(sum_ch_mse_tf, 1), sqrt(mean(sum_ch_mse_tf(:, :, :, idx_usr), 3)/sim_cnt))
+                xlabel('OFDM Symbols'), ylabel('Subcarriers'), zlabel('Channel Estimation Error'), title('Channel Estimation Error in time-frequency domain')
+                figure
+                mesh(1:size(sum_ch_mse_dd, 2), 1:size(sum_ch_mse_dd, 1), fftshift(fftshift(sqrt(mean(sum_ch_mse_dd(:, :, :, idx_usr), 3)/sim_cnt), 1), 2))
+                xlabel('Doppler'), ylabel('Delay'), zlabel('Channel Estimation Error'), title('Channel Estimation Error in delay-Doppler domain')
+            end
+        else
+            for idx_usr = 1:nw_num.num_usr
+                figure
+                mesh(1:size(sum_ch_mse, 2), 1:size(sum_ch_mse, 1), sqrt(mean(sum_ch_mse(:, :, :, idx_usr), 3)/sim_cnt))
+                zlabel('Channel Estimation Error'), title('Channel Estimation Error')
+            end
+        end
     end
 end
 
