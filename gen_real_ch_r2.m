@@ -16,7 +16,7 @@
 %     demap_usr: user demapping option (true: generate all output, false: generate 'ch_mat_tf' only)
 %     gpu_flag: use gpu when true
 
-function [ch_mat_t, ch_fulltap_tf, ch_onetap_usr_tf, ch_eff_usr_tf, ch_eff_usr_dd] = gen_real_ch_r1(ch_obj, ch_pg, num, list_subc_usr, list_ofdmsym_usr, demap_usr, test_option)
+function [ch_mat_t, ch_fulltap_tf, ch_onetap_usr_tf, ch_eff_usr_tf, ch_eff_usr_dd] = gen_real_ch_r2(ch_obj, ch_pg, num, list_subc_usr, list_ofdmsym_usr, demap_usr, test_option)
 
 % variables  
 nfft = num.num_fft;
@@ -71,13 +71,14 @@ for idx_path = 1:npath
 end
 
 % generate tf domain channel (circulant matrix svd)
-% ch_mat_per_path = ch_pg_reshape.*ch_coeff_mat;
-% ch_mat_t = sum(ch_mat_per_path, 4);
-for idx_sym = 1:nsym
-    pg_mat = ch_pg_reshape(:, :, idx_sym, :);
-    ch_mat_per_path = pg_mat.*ch_coeff_mat;
-    ch_mat_t(:, :, idx_sym) = sum(ch_mat_per_path, 4);
-end
+% for idx_sym = 1:nsym
+%     pg_mat = ch_pg_reshape(:, :, idx_sym, :);
+%     ch_mat_per_path = pg_mat.*ch_coeff_mat;
+%     ch_mat_t(:, :, idx_sym) = sum(ch_mat_per_path, 4);
+% end
+
+ch_mat_per_path = ch_pg_reshape.*ch_coeff_mat;
+ch_mat_t = sum(ch_mat_per_path, 4);
 ch_mat_fftshift_tf = ifft(fft(ch_mat_t, [], 1), [], 2);    % circulant matrix svd
 
 % convert gpu arrays to normal arrays

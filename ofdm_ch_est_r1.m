@@ -46,7 +46,6 @@ if strcmp(chest_option, 'tf_ltedown') || strcmp(chest_option, 'tf_lteup') || str
         rx_ofdmsym_pilot_interp_1d(:, num.idx_ofdmsym_pilot_usr(i)) = ...
             interp1(num.idx_subc_pilot_usr(:, i), rx_ofdmsym_pilot_vp(num.idx_subc_pilot_usr(:, i), 1), ...
             1:num.num_subc_usr, 'linear', 'extrap');
-        
     end
     
     % interpolate 2nd dimension (along ofdm symbols)

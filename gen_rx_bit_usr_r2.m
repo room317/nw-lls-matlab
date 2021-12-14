@@ -8,7 +8,7 @@
 %   - cc, rm, num: simulation parameters
 %   - test_option: license check
 
-function [rx_bit, rx_crc_error] = gen_rx_bit_usr_r2(rx_sym, error_var, rv_idx, rx_crc_a, cc, rm, test_option)
+function [rx_bit, rx_crc_error] = gen_rx_bit_usr_r2(rx_sym, error_var, rx_crc_a, cc, rm, test_option)
 
 % serialize qam symbols
 rx_sym_serial = reshape(rx_sym, [], 1);
@@ -29,7 +29,7 @@ if test_option.license
     end
     
     % rate recovery
-    rx_bit_raterecover = lteRateRecoverTurbo(rx_bit_demod, cc.A, rv_idx);
+    rx_bit_raterecover = lteRateRecoverTurbo(rx_bit_demod, cc.A, test_option.rv_idx);
     
     % turbo decoder
     rx_bit_dec = lteTurboDecode(rx_bit_raterecover, cc.num_iter_max);
@@ -49,7 +49,7 @@ else
     rx_bit_demod = rx_bit_demod(:);
     
     % rate recovery
-    rx_bit_raterecover = lteRateRecoverTurbo(rx_bit_demod, cc.A, rv_idx);
+    rx_bit_raterecover = lteRateRecoverTurbo(rx_bit_demod, cc.A, test_option.rv_idx);
     
     % turbo decoder
     rx_bit_dec = lteTurboDecode(rx_bit_raterecover, cc.num_iter_max);

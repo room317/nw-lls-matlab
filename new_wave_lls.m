@@ -71,7 +71,7 @@ while 1
     test_option.fading_only = false;                % no awgn noise when true
     test_option.awgn = false;                       % no fading when true
     test_option.papr = false;                       % papr test
-    test_option.ch_mse = false;                     % channel mmse test
+    test_option.ch_mse = 'none';                     % channel mmse test ('none', 'fulltap', 'onetap')
     test_option.sym_err_var = false;                % symbol error variance test
     test_option.ch_tf_edge_interp = false;          % tf-channel edge interpolation test (no use)
     test_option.ch_dd_guard_interp = false;         % guard interpolation for channel estimation
@@ -89,7 +89,9 @@ while 1
     test_option.golay_seq_a = Ga;           % complementary golay sequence
     test_option.golay_seq_b = Gb;           % complementary golay sequence
     test_option.rand_seq_len = 2;                                                                     % random sequence length
-    rand_seq = complex(randn(test_option.rand_seq_len, 1), randn(test_option.rand_seq_len, 1));       % random sequence
+%     rand_seq = complex(randn(test_option.rand_seq_len, 1), randn(test_option.rand_seq_len, 1));     % random sequence
+%     rand_seq = exp(-1i*2*pi*randi(1024, test_option.rand_seq_len, 1)/1024);                         % random equi-power sequence
+    rand_seq = ones(test_option.rand_seq_len, 1);                                                     % ones
     test_option.rand_seq = rand_seq/sqrt(mean(abs(rand_seq).^2, 'all'));                                % random sequence
     test_option.fulltap_eq = false;         % use full-tap real channel for equalization
     test_option.common_usr_ch = true;       % use common channel per user
@@ -146,9 +148,9 @@ while 1
                 'NumTransmitAntennas', 1, ...
                 'NumReceiveAntennas', 1, ...
                 'SampleRate', nw_num.sample_rate, ...
-                'KFactorScaling', true, ...
-                'KFactor', 10*log10(nw_ch.k_factor),...
                 'NormalizePathGains', true);
+%                 'KFactorScaling', true, ...
+%                 'KFactor', 10*log10(nw_ch.k_factor),...
         else
             fading_ch = comm.RicianChannel(...
                 'SampleRate', num.sample_rate,...
@@ -199,22 +201,26 @@ while 1
     nw_sim_result = zeros(SNRCnt, nw_num.num_usr+2);
     for snr_idx = 1:SNRCnt
         snr_db = snr_db_start+SNRStep*(snr_idx-1);
+        esn0_db = snr_db-(10*log10((nw_num.num_cp+nw_num.num_fft)/nw_num.num_fft));
         
         % initialize counter
         total_error = zeros(1, nw_num.num_usr);
         sim_cnt = 0;
         sum_papr = 0;
-        sum_ch_mse = zeros(1, nw_num.num_usr);
         sum_sym_err_var = zeros(1, nw_num.num_usr);
-        sum_ch_pwr = zeros(nw_num.num_delay_usr, nw_num.num_doppler_usr);
+        
+        sum_ch_mse = zeros(nw_num.num_subc_usr*nw_num.num_ofdmsym_usr, nw_num.num_subc_usr*nw_num.num_ofdmsym_usr, nw_rm.N_RB, nw_num.num_usr);
+        sum_ch_mse_tf = zeros(nw_num.num_subc_usr, nw_num.num_ofdmsym_usr, nw_rm.N_RB, nw_num.num_usr);
+        sum_ch_mse_dd = zeros(nw_num.num_subc_usr, nw_num.num_ofdmsym_usr, nw_rm.N_RB, nw_num.num_usr);
         
         for sim_idx = 1:num_sim
             
             % simulate single packet
             if strcmp(waveform, 'ofdm')    % ofdm
-                [pkt_error, tx_papr, ch_mse, sym_err_var] = ...
+                [pkt_error, tx_papr, ch_est_err, sym_err_var, ...
+                    ch_est_rbs, ch_real_eff] = ...
                     ofdm_dnlink_singlerun_r3( ...
-                    test_option.rv_idx, nw_cc, nw_rm, nw_num, snr_db, ...
+                    nw_cc, nw_rm, nw_num, esn0_db, ...
                     tx_crc_a, tx_crc_b, rx_crc_a, fading_ch, ...
                     chest_option, cheq_option, test_option);
 %                 [pkt_error, tx_papr, ch_mse, sym_err_var] = ...
@@ -228,10 +234,10 @@ while 1
 %                     tx_crc, rx_crc, turbo_enc, turbo_dec, fading_ch, ...
 %                     chest_option, cheq_option, test_option);
             else                           % otfs
-                [pkt_error, tx_papr, ch_mse, sym_err_var, ...
-                    ch_est_rbs_dd, ch_real_eff_tf] = ...
+                [pkt_error, tx_papr, ch_est_err, sym_err_var, ...
+                    ch_est_rbs, ch_real_eff] = ...
                     otfs_dnlink_singlerun_r2( ...
-                    test_option.rv_idx, nw_cc, nw_rm, nw_num, snr_db, ...
+                    nw_cc, nw_rm, nw_num, esn0_db, ...
                     tx_crc_a, tx_crc_b, rx_crc_a, fading_ch, ...
                     chest_option, cheq_option, test_option);
 %                 [pkt_error, tx_papr, ch_mse, sym_err_var, ch_est_rbs_dd] = ...
@@ -253,13 +259,21 @@ while 1
                 sum_papr = sum_papr+tx_papr;
             end
             
-            % sum channel mse
-            if test_option.ch_mse
-                sum_ch_mse = sum_ch_mse+ch_mse;
-            end
-            
-            if test_option.ch_mse && strcmp(waveform, 'otfs')
-                sum_ch_pwr = sum_ch_pwr+sum(abs(ch_est_rbs_dd).^2, [3 4]);
+            % sum channel mse (tmp)
+            if ~strcmp(test_option.ch_mse, 'none')
+                if strcmp(test_option.ch_mse, 'onetap')
+                    if strcmp(waveform, 'otfs')
+                        sum_ch_mse_dd = sum_ch_mse_dd+abs(ch_est_err).^2;
+                        ch_est_err_tf = sqrt(nw_num.num_doppler_usr/nw_num.num_delay_usr)*fft(ifft(ch_est_err, [], 2), [], 1);
+                        sum_ch_mse_tf = sum_ch_mse_tf+abs(ch_est_err_tf).^2;
+                    else
+                        sum_ch_mse_tf = sum_ch_mse_tf+abs(ch_est_err).^2;
+                        ch_est_err_dd = sqrt(nw_num.num_subc_usr/nw_num.num_ofdmsym_usr)*fft(ifft(ch_est_err, [], 1), [], 2);
+                        sum_ch_mse_dd = sum_ch_mse_dd+abs(ch_est_err_dd).^2;
+                    end
+                else
+                    sum_ch_mse = sum_ch_mse+abs(ch_est_err).^2;
+                end
             end
             
             % sum symbol errors
@@ -287,8 +301,8 @@ while 1
             fprintf(fp2, ' %10.6f', papr_db);
         end
         
-        if test_option.ch_mse
-            ch_rmse = sqrt(sum_ch_mse/sim_cnt);           % calculate channel mmse
+        if ~strcmp(test_option.ch_mse, 'none')
+            ch_rmse = sqrt(mean(sum_ch_mse, 'all')/sim_cnt);           % calculate channel mmse
             fprintf('   CH RMSE:')
             fprintf(' %6.3f', ch_rmse)
             fprintf(fp2, ' %10.6f', ch_rmse);
@@ -306,7 +320,10 @@ while 1
         fprintf(fp2, '\n');
         
         % set stopping criteria
-        if (max(nw_sim_result(snr_idx, 3:end)) < ErrorBreak) && ~(test_option.papr || test_option.ch_mse || test_option.sym_err_var)
+        if (max(nw_sim_result(snr_idx, 3:end)) < ErrorBreak) && ...
+                strcmp(test_option.ch_mse, 'none') && ...
+                ~test_option.papr && ...
+                ~test_option.sym_err_var
             disp('BREAK');
             break;
         end
@@ -322,11 +339,22 @@ while 1
         grid minor
     end
     
-    if test_option.ch_mse && strcmp(waveform, 'otfs')
-        for idx_usr = 1:nw_num.num_usr
-            figure
-            mesh(1:nw_num.num_doppler_usr, 1:nw_num.num_delay_usr, sqrt(fftshift(fftshift(sum_ch_pwr/(sim_cnt*nw_rm.N_RB*nw_num.num_usr), 1), 2)))
-            xlabel('Doppler'), ylabel('Delay'), zlabel('Average Channel Amplitude'), title('Channel Estimation')
+    if ~strcmp(test_option.ch_mse, 'none')
+        if strcmp(test_option.ch_mse, 'onetap')
+            for idx_usr = 1:nw_num.num_usr
+                figure
+                mesh(1:size(sum_ch_mse_tf, 2), 1:size(sum_ch_mse_tf, 1), sqrt(mean(sum_ch_mse_tf(:, :, :, idx_usr), 3)/sim_cnt))
+                xlabel('OFDM Symbols'), ylabel('Subcarriers'), zlabel('Channel Estimation Error'), title('Channel Estimation Error in time-frequency domain')
+                figure
+                mesh(1:size(sum_ch_mse_dd, 2), 1:size(sum_ch_mse_dd, 1), fftshift(fftshift(sqrt(mean(sum_ch_mse_dd(:, :, :, idx_usr), 3)/sim_cnt), 1), 2))
+                xlabel('Doppler'), ylabel('Delay'), zlabel('Channel Estimation Error'), title('Channel Estimation Error in delay-Doppler domain')
+            end
+        else
+            for idx_usr = 1:nw_num.num_usr
+                figure
+                mesh(1:size(sum_ch_mse, 2), 1:size(sum_ch_mse, 1), sqrt(mean(sum_ch_mse(:, :, :, idx_usr), 3)/sim_cnt))
+                zlabel('Channel Estimation Error'), title('Channel Estimation Error')
+            end
         end
     end
 end

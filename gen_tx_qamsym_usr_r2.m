@@ -17,7 +17,7 @@
 %   - slot-based to user-frame-based simulation (user frame = multiple slots)
 %   - cell-based processing: 2021.10.06 (toolbox cross-checked)
 
-function [tx_bit, tx_sym] = gen_tx_qamsym_usr_r2(rv_idx, cc, rm, num, tx_crc_a, tx_crc_b, test_option)
+function [tx_bit, tx_sym] = gen_tx_qamsym_usr_r2(cc, rm, num, tx_crc_a, tx_crc_b, test_option)
 
 % generate bit stream
 tx_bit = randi([0 1], cc.A, 1);
@@ -34,7 +34,7 @@ if test_option.license
     tx_bit_enc = lteTurboEncode(tx_bit_seg);
     
     % rate matching and code block concatenation
-    tx_bit_ratematch = lteRateMatchTurbo(tx_bit_enc, rm.G, rv_idx);
+    tx_bit_ratematch = lteRateMatchTurbo(tx_bit_enc, rm.G, test_option.rv_idx);
     
     if test_option.qam_modem_toolbox
         % symbol modulate the codeword
@@ -75,7 +75,7 @@ else
     end
     
     % rate matching and code block concatenation
-    tx_bit_ratematch = tx_ratematch_r3(tx_bit_enc, cc, rm, rv_idx, test_option);
+    tx_bit_ratematch = tx_ratematch_r3(tx_bit_enc, cc, rm, test_option);
 
     % modulate bit stream
     tx_sym_serial = qammod(tx_bit_ratematch(:), 2^rm.Q_m, rm.lteSymMap, 'InputType', 'bit', 'UnitAveragePower', true);

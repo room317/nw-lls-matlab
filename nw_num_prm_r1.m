@@ -93,6 +93,7 @@ num_subc_bw = num_rb*num_subc_rb;           % number of subcarriers in bandwidth
 num_fft = 2^ceil(log2(num_subc_bw));        % fft size
 sample_rate = scs_khz*1e3*num_fft;          % sampling rate (hz)
 num_cp = round(num_fft*144/2048);           % number of samples in cyclic prefix
+% num_cp = round(num_fft*288/2048);           % number of samples in cyclic prefix
 num_ofdmsym_slot = 14;                      % number of ofdm symbols per slot
 num_ofdmsym = num_ofdmsym_slot*num_slot;    % number of ofdm symbols
 
@@ -131,15 +132,21 @@ if strcmp(waveform, 'ofdm')    % ofdm
         idx_ofdmsym_pilot_usr = reshape([1; 5; 8; 12]+(0:num_slot_usr-1)*num_ofdmsym_slot, 1, []);    % pilot symbol index (should be scalar or vector)
         idx_subc_pilot_usr = repmat([(6:6:num_subc_usr)', (3:6:num_subc_usr)', (6:6:num_subc_usr)', (3:6:num_subc_usr)'], 1, num_slot_usr);
     elseif strcmp(chest_option, 'tf_nr')                                % tf-domain pilots (some symbols for pilots)
-        if test_option.custom_nr_pilot
+        if strcmp(test_option.custom_nr_pilot, '50%')
             % nr custom plan (100% across time axis)
             idx_ofdmsym_pilot_usr = reshape((1:num_ofdmsym_slot)'+(0:num_slot_usr-1)*num_ofdmsym_slot, 1, []);    % pilot symbol index (should be scalar or vector)
             idx_subc_pilot_usr = repmat((2:2:num_subc_usr)', 1, length(idx_ofdmsym_pilot_usr));
-        else
+        elseif strcmp(test_option.custom_nr_pilot, '18%')
+            % nr traditional plan
+            idx_ofdmsym_pilot_usr = reshape((1:3:14)'+(0:num_slot_usr-1)*num_ofdmsym_slot, 1, []);    % pilot symbol index (should be scalar or vector)
+            idx_subc_pilot_usr = repmat((2:2:num_subc_usr)', 1, length(idx_ofdmsym_pilot_usr));
+        elseif strcmp(test_option.custom_nr_pilot, 'normal')    % 14.3% use
             % nr traditional plan
 %             idx_ofdmsym_pilot_usr = repmat([3 6 9 12], 1, num_slot);        % pilot symbol index (should be scalar or vector)
             idx_ofdmsym_pilot_usr = reshape([3; 6; 9; 12]+(0:num_slot_usr-1)*num_ofdmsym_slot, 1, []);    % pilot symbol index (should be scalar or vector)
             idx_subc_pilot_usr = repmat([(2:2:num_subc_usr)', (2:2:num_subc_usr)', (2:2:num_subc_usr)', (2:2:num_subc_usr)'], 1, num_slot_usr);
+        else
+            error('''test_option.custom_nr_pilot'' must be one of these: {''normal'', ''50%'', ''18%""}')
         end
     else    % whole resources for data (real, perfect)
         idx_ofdmsym_pilot_usr = [];

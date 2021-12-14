@@ -3,10 +3,10 @@
 %   - d must shall be cell-type
 %   - rv_idx: redundancy version number
 
-function f_k = tx_ratematch_r3(d, cc, rm, rv_idx, test_option)
+function f_k = tx_ratematch_r3(d, cc, rm, test_option)
 
 % start index of circular buffer
-k_0 = rm.R_TC.*(2*ceil(rm.N_cb./(8*rm.R_TC))*rv_idx+2);
+k_0 = rm.R_TC.*(2*ceil(rm.N_cb./(8*rm.R_TC))*test_option.rv_idx+2);
 
 e_k = cell(1, cc.C);
 f_k = zeros(sum(rm.E), 1);
